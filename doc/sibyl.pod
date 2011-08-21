@@ -1,0 +1,187 @@
+=head1 NAME
+
+sibyl - Secure authentication using the Sibyl.
+
+=head1 SYNOPSIS
+
+The Sibyl is a client-server implementation of a secure authentication
+protocol involving RSA encryption of the shadow (or analogous)
+file. It requires a hardware device (the B<Sibyl>) and a software layer.
+
+=head1 DESCRIPTION
+
+The B<Sibyl> is a restrictive embodyment of an RSA oracle, optimized
+(security-wise) for authentication algorithms in situations in which
+the database of authentication tokens ---the password database--- is
+deemed unsafe (which, as a matter of fact, means I<always>).
+
+It comprises two layers: a hardware item and a
+piece of software which implements a client-server architecture between
+the authenticating computer (the
+one the password database is stored on) and
+the hardware item. The diagram shows a possible implementation.
+
+The B<Sibyl> is connected to the Authentication Server (a.s.)
+---possibly the computer you are reading this man page on---. There
+are I<two RSA key pairs>: the I<encryption pair> and the I<signing
+pair> (this is essential for the security of the protocol). The
+private keys are stored on the B<Sibyl>, whereas the a.s. has access
+to both public keys (which are usually stored in the F</etc/sibyl>
+directory, as F<sign.pub> and F<decrypt.pub>). 
+
+In the a.s. the authentication tokens are stored (for example, in a
+typical Unix logging environment) as base64 encoded RSA-encrypted
+I<crypt(3)> passwords preceded by the salt used in the I<crypt(3)>
+process. That is, each entry in the F<shadow> database (which is
+stored as a standard password file in F</etc/sibyl/shadow>) would look
+like:
+
+=over
+
+C<user:$1$SOvM5$Rada783R/783478dadfa... (till 2048
+binary bits, say):...>
+
+=back
+
+Which is the username followed by the salt (C<$1$SOvM5$>) and the
+output of 
+
+=over
+
+C<base64(RSA_encrypt(crypt(password, salt))).>
+
+=back
+
+Whenever a user tries to log in on the a.s., the following steps take
+place (first of all, the Authentication Server connects to the Sibyl):
+
+=over
+
+=item *
+
+On the Authentication Server:
+
+=over
+
+=item
+
+The a.s. receives a I<nonce> (unique to this authentication
+process) from the B<Sibyl>: I<n>.
+
+=item
+
+From the password database, the a.s. gets the I<real> authentication token (which is
+RSA-encrypted with the B<Sibyl>'s public key): I<p1>, and (if this
+exists) the I<salt> used to I<crypt(3)> this token.
+
+=item
+
+The a.s. grabs the I<password> entered by the logging user.
+
+=item
+
+The a.s. encrypts I<n:saltpassword> using the B<Sibyl>'s public key
+to get I<p2>.
+
+=item
+
+The a.s. generates another nonce I<m>.
+
+=item
+
+The a.s. sends a message of the form I<m;p1;p2> to the
+B<Sibyl>.
+
+=back
+
+=item
+
+On the B<Sibyl>:
+
+=over
+
+=item
+
+The B<Sibyl> decrypts I<p1> and I<p2> to get I<u1> and I<u2>.
+
+=item
+
+Checks that I<u2> matches the pattern I</^n:(.*)$/> and sets I<v1=$1> (in
+Perl's regexp notation).
+
+=item
+
+If I<u1>=I<v1> then it returns the
+message I<m:1> I<signed> with the signing key. Otherwise, it returns
+the message I<m:0> I<signed> with the same key.
+
+=back
+
+=item
+
+On the a.s.:
+
+=over
+
+=item
+
+It receives the signed message from the B<Sibyl>.
+
+=item
+
+If the received message has been properly signed and the message is I<m:1>, then B<grant
+authentication>. In any other case B<deny authentication>.
+
+=back
+
+=back
+
+
+=head1 OPERATION
+
+The directory F</etc/sibyl> needs to exist and include the files
+
+=over 
+
+=item B<sign.pub>
+
+the public key corresponding to the Sibyl's private signing key.
+
+=item B<decrypt.pub>
+
+the public key corresponding to the Sibyl's private decryption key.
+
+=item B<shadow>
+
+the authentication token database. This file I<must> be created using the C<shadow2sibyl.pl>
+script, included in the Sibyl's distribution files.
+
+=back
+
+=head1 LIMITATIONS AND WARNINGS
+
+Although the Sibyl adds a strong authentication layer against theft of the standard
+C<shadow> file, it requires careful set up to prevent both DoS and to ensure availability.
+
+The default behaviour assumes that the B<root> user will B<not> be linked to the
+Sibyl, as this would require this user to log in through the Sibyl's services, which
+may be impossible in case of a failure of the Sibyl, or a general network failure.
+The system administrator is thus advised to either let this default behaviour or,
+if modifying it, allow for an alternative logging method into the system.
+
+
+=head1 FILES
+ 
+
+ /etc/sibyl/sign.pub
+ /etc/sibyl/decrypt.pub
+ /etc/sibyl/shadow
+
+=head1 SEE ALSO
+
+pam_sibyl(n), shadow2sibyl(n), sibyl_srv(n), sibyl_client(n)
+
+=head1 AUTHORS
+
+pam_sibyl was written by Pedro Fortuny <info@pfortuny.net> and Rafael Casado <rafacas@gmail.com>
+

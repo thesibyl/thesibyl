@@ -1,0 +1,17 @@
+# The protocol includes a nonce before proeceeding: client
+# asks for a nonce, server sends one back, client encodes
+# both auth. token+nonce, so that it cannot reuse the auth.
+# tokens!....
+
+
+#Documentation:
+Check output values in man(pod) pages
+Write all the .pod versions of the man pages
+Include pod2man in doc makefiles, etc...
+
+
+#Snow leopard & leopard: full documentation, pretty good.
+http://www.dribin.org/dave/blog/archives/2006/04/28/os_x_passwords_2/
+must convert these to base64(rsa($_))
+
+#Use old and new tokens when doing passwd: add an option for this

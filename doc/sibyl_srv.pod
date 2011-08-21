@@ -1,0 +1,74 @@
+=head1 NAME
+
+sibyl_srv.pl - Sibyl's server layer
+
+=head1 SYNOPSIS
+
+I<sibyl_srv.pl> [-d decrypt key] [-s sign key] [-i IP] [-p port] [-D path]
+I<sibyl_srv_ioselect.pl> [-d decrypt key] [-s sign key] [-i IP] [-p port] [-D path]
+
+=head1 DESCRIPTION
+
+B<sibyl_srv.pl> (or its C<ioselect> equivalent) is the server side of
+the Sibyl Authentication Module. This program runs on the Sibyl and
+provides a zero-knowledge oracle for authentication purposes to a (or
+several) authentication servers, which must be either running
+I<sibyl_client.pl> or using the I<pam_sibyl.so> PAM module.
+
+=head1 OPTIONS
+
+=over
+
+=item B<-d> I<file>
+
+use I<file> as the RSA private decryption key. The authentication server must
+use, obviously, the corresponding public key. Default is I<decrypt>.
+
+=item B<-s> I<file>
+
+use I<file> as the RSA private signing key. The authentication server must
+use, obviously, the corresponding public key. It is B<essential> that this
+key be different from the decryption key. Otherwise the protocol would be
+utterly unsafe. Default is I<sign>.
+
+=item B<-i> I<IP>
+
+use I<IP> (in A.B.C.C notation) to listen on. By default, the Sibyl listens
+on all the available network addresses.
+
+=item B<-p> I<port>
+
+Listen on port number I<port>. Default is 9999.
+
+=item B<-D> I<path>
+
+Use I<path> for the configuration directory, where the signing and decryption
+keys are stored. Default is I<.>.
+
+=back
+
+=head1 EXAMPLES
+
+Run the server in the background and with SIGHUP ignored, listening on IP 192.168.1.3
+and on port 3412:
+
+=over
+
+nohup perl sibyl_srv.pl -i 192.168.1.3 -p 3412 &
+
+=back
+
+
+=head1 EXIT STATUS
+
+The server does not exit unless invoked with wrong parameters, in which case the
+error code es 1.
+
+=head1 SEE ALSO
+
+sibyl(n), sibyl_client(n), pam_sibyl(n)
+
+=head1 AUTHORS
+
+Pedro Fortuny Ayuso <pfortuny@gmail.com> and Rafael Casado Sanchez <rafacas@gmail.com>.
+

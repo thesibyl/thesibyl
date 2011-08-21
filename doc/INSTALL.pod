@@ -1,0 +1,439 @@
+=begin html
+    <meta>
+      <link rel="stylesheet" type="text/css" href="sibyl.css" />
+    </meta>
+    <div id="title">
+      The Sibyl
+    </div>
+    <div id="subtitle">
+      Another layer of security for authentication
+    </div>
+    <p>
+    <div id="menubar">
+      <a href="index.html">Home</a> 
+      <a href="download.html">Download</a>
+      <a href="faq.html">FAQ</a>
+      <a href="sibyl_step_by_step.html">Details</a>
+      <a href="technical.html">Technical</a>
+    </div>
+    </p>
+
+=end html
+
+=head1 Install
+
+Installing the Sibyl requires two main steps:
+
+=over
+
+=item Setting up and configuring the hardware item (the Sibyl)
+
+=item Configuring the authentication client
+
+=back
+
+If you are in a rush, then read the "I'm in a rush" section at bottom.
+
+=head2 Introduction
+
+As you will have read in the accompanying paper, the Sibyl is an
+independent machine (which might as well be virtual) running a
+specific software which, essentially, checks that two RSA-encrypted
+messages correspond to the same "password" (actually, to the hash of
+the same password, but this is more or less irrelevant). As such,
+there are two elements to set up:
+
+=over
+
+=item The Sibyl 
+
+=item The authentication server (the computer which authenticates)
+
+=back
+
+There are no restrictions on which one is configured before, but we
+find it more natural to first configure the Sibyl and then the
+client. As a matter of fact, "configuring" the Sibyl means just
+installing a Perl script, a couple of private RSA keys and running the
+script as a daemon. There are two or three CPAN packages one may need
+to install as well. The installation on the authentication server is a
+bit more complicated.
+
+=head2 Setting up and configuring the Sibyl
+
+In the software bundle which you will have already downloaded, inside
+the C<src> directory there is a C<server> subdirectory containing
+several Perl scripts. The only one which we shall use is
+C<sibyl_srv_ioselect.pl>, but the one named C<sibyl_srv.pl> is also
+valid and accepts the same options as the other one (only it may end
+up consuming much more resources due to its use of the C<recv> and
+C<send> system calls (the other une uses C<select> and is less
+resource consuming).
+
+For the installation on the Sibyl, you must:
+
+=over
+
+=item Create the keys
+
+In the C<src> directory, run
+
+ sibyl# make keys
+
+This will create the following files in the C<keys> directory:
+
+ sign sign.pub decrypt decrypt.pub
+
+The ones with the C<.pub> extension are the public keys, the others
+are the private ones. These you must copy in a suitable directory,
+B<in the Sibyl>, let us say C</usr/local/sibyl/>. Notice that the
+private keys B<must be kept secrer> and must NEVER be stored on the
+authentication server, B<NEVER>.
+
+The public keys you need to store on the authentication server, as we
+explain later on.
+
+=item Copy the perl script and module. Verify it runs.
+
+Copy the Sibyl perl module C<sibyl.pm>, which is in the C<src/lib>
+directory into the same directory as the private keys:
+
+ sibyl # cp src/lib/sibyl.pm /usr/local/sibyl/
+
+Copy the C<sibyl_srv_ioselect.pl> file in the same directory
+where you stored the private keys, C</usr/local/sibyl>.
+
+Verify that it runs
+
+ sibyl# cd /usr/local/sibyl
+ sibyl# perl sibyl_srv_ioselect.pl
+
+If it complains about not being able to find a module, you need to
+install the following CPAN modules:
+
+=over
+
+=item Crypt::OpenSSL::Random
+
+=item Crypt::OpenSSL::RSA
+
+=item File::Slurp
+
+=back
+
+They can be found at the CPAN.
+
+=back
+
+=item Run the perl script as a daemon
+
+A way to do this is
+
+ sibyl# nohup perl sibyl_srv_ioselect.pl -s sign -d decrypt &
+
+But you probably want to install it as a startup daemon. We shall not
+delve into this. The command-line options can be seen with the C<-h>
+option.
+
+If you are here and everything has worked properly, you are now
+running a Sibyl. It is waiting for messages to compare and answer.
+
+Assume the IP of the Sibyl is S.I.B.L (for example, 172.10.0.23, the
+default being 192.168.1.2) and the port it is running on is 8888 (the default is
+9999, so we are just assuming you changed both the IP and the port).
+
+=head2 Configuring the authentication client
+
+Up to date, there is only a Unix-style authentication service
+developed: a PAM module, including the C<auth> and C<passwd> services
+(so that one can not only login but also create and modify Sibyl
+passwords).
+
+You need to be root (or to run sudo before any command) to do most of
+what follows.
+
+=over
+
+=item Compiling the PAM modules
+
+We assume you have downloaded the code bundle and decompressed
+it. Enter the C<src> directory (we shall assume you are there).
+
+Compile the modules. If you are on a Linux computer, run
+
+ client# make -f Makefile.linux pam_sibyl
+
+This will create a file client/pam_sibyl.so, which is the PAM
+module. It needs to be installed in the appropriate directory, usually
+C</lib/security> on 32-bit systems and C<lib64/security> on 64-bit
+systems. This can be done with
+
+ client# make -f Makefile.linux install
+
+or copying the C<.so> file yourself into the appropriate place.
+
+=item Installing the public keys
+
+The client-side assumes the public keys are stored in the directory
+C</etc/sibyl>. This directory must be created if it does not
+exist. The public keys B<must be the ones already created> (that is,
+they must be the public keys of the private keys created for the
+Sibyl). Copy them (the C<.pub> ones) in C</etc/sibyl>.
+
+=item Creating the Sibyl's shadow file
+
+The Sibyl authentication token database is stored in the file
+C</etc/sibyl/shadow>. If you want to create
+it from the system's C</etc/shadow> file, there is a script in the
+C<lib> directory for this.
+
+=over
+
+=item On Linux
+
+ client# perl lib/shadow2sibyl.pl /etc/shadow > /etc/sibyl/shadow
+ client# chmod 0600 /etc/sibyl/shadow
+
+=item On OS-X (Snow Leopard)
+
+ client# perl lib/shadow2sibyl.pl -snow-leopard > /etc/sibyl/shadow
+ client# chmod 0600 /etc/sibyl/shadow
+
+=back
+
+This can only be done if the public keys have alredy been stored in
+the C</etc/sibyl> directory.
+
+=item Configuring the PAM modules
+
+Before proceeding, you need to test that the Sibyl is effectively
+reachable from your cient (otherwise you may end up with a brick
+instead of a computer). Assume the Sibyl is at IP 172.10.0.23 and
+listening on port 8888. To verify that it is running correctly, telnet
+to it:
+
+ client# telnet 172.10.0.23 8888
+
+You must receive B<immediately> a random number followed by an 'at'
+(@). If this does not happen, the Sibyl is not properly connected to
+the client.
+
+Once you have checked that the client can access the Sibyl, you can
+proceed to edit the PAM files.
+
+For the C<auth> module, the following line should be added:
+
+ auth    required    pam_sibyl.so IP=172.10.0.23 port=8888
+
+For the C<passwd> module,
+
+ pass    required    pam_sibyl.so IP=172.10.0.23 port=8888
+
+(obviously, you may change required for any other useful
+option). Those lines must be included in the specific modules you want
+the Sibyl to be used on (sshd, ftpd, telnetd, whatnot).
+
+See them PAM documentation for more possibilities.
+
+If, for example, you have added the C<pam_sibyl.so> module to the
+C<sshd> service PAM C<auth> section, you can test if it works trying
+to connect B<as a non-root user>:
+
+ client# ssh notarootuser@localhost
+ [... login message or error]
+
+To verify that you have been properly authenticated by the Sibyl,
+search for an 'Authentication OK for user [notarootuser]' in the
+C<LOG_AUTH> file (usually C</var/log/auth.log>, but it might as well
+be C</var/log/secure.log> or even C</var/log/messages>, ymmv). If no
+such message appears, grep for 'sibyl' in the same log file and see
+what may have happened. By default, the sibyl module is very verbose
+(you can modify this at compile time).
+
+Everything should work. Any problems? Ask Jeeves because we do not
+know what may have happened.
+
+=back
+
+=head2 Caveats
+
+Remember to keep the private keys on the Sibyl
+ONLY. Nevermove or copy them from there unless for backup
+purposes and then encrypted.
+
+By default, the private keys are NOT encrypted. This is not an issue
+as long as the Sibyl is not publicly reachable. As of today, the
+Crypt::OpenSSL::RSA cannot read encrypted private keys, so we have
+to bear with this until we find another way to approach this problem.
+
+=head2 On C<root>
+
+By default (and for availability reasons) the Sibyl does not work for
+the root (uid=0) user. This means that if you try to either log-in as
+root or modify root's password using the pam_sibyl.so module, it will
+be ignored (and probably logged in the authentication log file).
+
+However, you may want to enable root for the Sibyl (we neither suggest
+nor unsuggest it). This can be achieved with the following option:
+
+ root_ok=yes
+
+in the corresponding PAM module line. For example:
+
+ passwd    require    pam_sibyl.so root_ok=yes
+
+As root is disabled by default, there is no C<root_ok=no> option: it
+can only be enabled explicitly, otherwise it is disabled.
+
+=head1 I'm in a rush
+
+=over
+
+=item Log into the Sibyl as root.
+
+This obviously requires you to have configured the Sibyl or being able to
+log into it without network access (OK, or with network access, but I do
+not care about that).
+
+=item Install the server side.
+
+This, also, requires Perl to be functional on the Sibyl and the following
+Perl modules (we assume you know how to install them):
+
+=over
+
+=item Crypt::OpenSSL::Random
+
+=item Crypt::OpenSSL::RSA
+
+=item File-Slurp
+
+=back
+
+Moreover, the Sibyl needs to be configured as follows:
+
+=over
+
+=item Generate the keys
+
+C<make keys>
+
+=item Copy the public keys for later use onto the authentication server.
+
+The public keys are the files C<decrypt.pub> and C<sign.pub> in the 
+directory C<keys>. The private
+keys are the files whose names do not have the C<.pub> extension.
+
+=item Run the sibyl server with the default parameters
+
+C<nohup ./sibyl_srv.pl &>
+C<exit>
+
+Obviously, the Sibyl must be able to accept connections on the corresponding
+port (default 9999). The default IP address it listens on is 192.168.1.2,
+but this is highly customizable. Run C<./sibyl_srv.pl -h> to get some
+help.
+
+=back
+
+=item Make sure that the C</etc/sibyl> directory exists. 
+
+If it does not exist, create it. Populate it with the Sibyl's public 
+keys (C<sign.pub> and C<decrypt.pub>).
+
+=item Install the C<pam_sibyl> module on the authentication server.
+
+C<sudo make install>
+
+You will certainly need to be root to do this.
+
+=item Trasnform your old C<shadow> file into a secure file
+
+On a Linux system, run
+
+C<< sudo shadow2sibyl.pl < /etc/shadow > /etc/sibyl/shadow >>
+
+If your system is snow leopard, then run
+
+=begin forlater
+
+If your system is Leopard or later, this step must be performed as
+
+C<< sudo shadow2sibyl.pl -leopard > /etc/sibyl/shadow >>
+
+or
+
+=end forlater
+
+C<< sudo shadow2sibyl.pl -snow-leopard > /etc/sibyl/shadow >>
+
+=item Eliminate all B<non-root> users from the F</etc/shadow> file
+
+You can do this by hand, with an editor.
+
+=item Set the permisions on F</etc/sibyl/shadow> to C<0400>:
+
+C<sudo chmod 0400 /etc/sibyl/shadow>
+
+=item Configure the pam modules. Be B<very> careful.
+
+=over 
+
+=item The C<authentication> section
+
+You must include the following line
+
+C<auth    sufficient    pam_sibyl.so>
+
+as the B<first> line in the F</etc/pam.d/common-auth> configuration file.
+
+(That is for authentication only). 
+
+=item The C<password> section 
+
+The following line
+
+C<passwd    required    pam_sibyl.so>
+
+must be included somewhere in the C<passwd> section of your PAM configuration
+files. YMMV, certainly.
+
+=back
+
+=item You're done
+
+=back
+
+
+=begin html
+
+      <div id="reminder">
+      <p>
+	This security project, the <strong>Sibyl</strong>,  has been
+	invented and implemented by
+	<a href="http://pfortuny.net">Pedro Fortuny</a> and <a href="http://rafacas.net">
+	  Rafael Casado</a>. Keep updated.
+      </p>
+      <p>
+         You can also see <a href="http://www.linkedin.com/profile/view?id=24022019">Pedro</a>'s
+         and <a href="http://www.linkedin.com/profile/view?id=11581943">Rafa</a>'s LinkedIn
+         profiles.
+     </p>
+      <p>
+	All the documentation in this domain is published under a 
+	<a href="http://creativecommons.org/licenses/by/3.0/">Creative Commons-By 
+	  Attribution
+	  licence</a>. All
+	the code is made public subject to
+	the <a href="http://creativecommons.org/licenses/BSD/"> BSD licence</a>.
+      </p>
+      </div>
+    </div>
+    <div id="footer">
+      (c) 2010 Pedro Fortuny Ayuso and Rafael Casado S&aacute;nchez.
+    </div>
+
+
+=end html
+
+=cut

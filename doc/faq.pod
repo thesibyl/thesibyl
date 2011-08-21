@@ -1,0 +1,90 @@
+=begin html
+    <meta>
+      <link rel="stylesheet" type="text/css" href="sibyl.css" />
+    </meta>
+    <div id="title">
+      The Sibyl
+    </div>
+    <div id="subtitle">
+      Another layer of security for authentication
+    </div>
+    <p>
+    <div id="menubar">
+      <a href="index.html">Home</a> 
+      <a href="download.html">Download</a>
+      <a href="faq.html">FAQ</a>
+      <a href="sibyl_step_by_step.html">Details</a>
+      <a href="technical.html">Technical</a>
+    </div>
+    </p>
+
+=end html
+
+=head1 FAQ
+
+Nobody has asked us any questions yet. However we are eager to answer the
+most obvious one.
+
+=over
+
+=item 1 Why?
+
+Because dictionary attacks and rainbow tables cannot be just defeated
+using complicated hash functions and salts: users always find the
+weakest possible password for any scheme.
+
+We are concerned about dictionary
+attacks on the shadow file (or on any database containing hashed
+authentication tokens). The advent of rainbow tables
+and fast, cheap computing has weakened the ability of hashes to keep
+"passwords" safe.
+
+However, the security issue does B<not> lie on the hashing
+functions, but on the fact that despite any security measures, end
+users find always a way to use simple passwords (even more, each set
+of password requirements admits several "simplest" examples, which
+will be used frequently by different users and will be easily found
+when using a "dictionary" or a rainbow table).
+
+Our approach uses the random nature of OAEP, which essentially adds
+more than 80 bits of randomness to the cyphertext, making both
+dictionary and rainbow tables attacks infeasible (in order to obtain
+the same cyphertext, the attacker needs to try the same password as
+the user B<and> use the same random bits when encrypting).
+
+=back
+
+
+
+=begin html
+
+      <div id="reminder">
+      <p>
+	This security project, the <strong>Sibyl</strong>,  has been
+	invented and implemented by
+	<a href="http://pfortuny.net">Pedro Fortuny</a> and <a href="http://rafacas.net">
+	  Rafael Casado</a>. Keep updated.
+      </p>
+      <p>
+         You can also see <a href="http://www.linkedin.com/profile/view?id=24022019">Pedro</a>'s
+         and <a href="http://www.linkedin.com/profile/view?id=11581943">Rafa</a>'s LinkedIn
+         profiles.
+     </p>
+      <p>
+	All the documentation in this domain is published under a 
+	<a href="http://creativecommons.org/licenses/by/3.0/">Creative Commons-By 
+	  Attribution
+	  licence</a>. All
+	the code is made public subject to
+	the <a href="http://creativecommons.org/licenses/BSD/"> BSD licence</a>.
+      </p>
+      </div>
+    </div>
+    <div id="footer">
+      (c) 2010 Pedro Fortuny Ayuso and Rafael Casado S&aacute;nchez.
+    </div>
+
+
+=end html
+
+=cut

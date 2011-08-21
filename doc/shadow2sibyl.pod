@@ -1,0 +1,50 @@
+=head1 NAME
+
+shadow2sibyl - Transform the standard shadow file into an RSA encrypted shadow
+file suitable for the Sibyl.
+
+=head1 SYNOPSIS
+
+B<< shadow2sibyl < input > output >>
+
+=head1 DESCRIPTION
+
+B<shadow2sibyl> transforms the input (whose format must conform to a password file's) 
+system's shadow file into a file suitable for use
+with the Sibyl. The latter must be kept in the directory F</etc/sibyl> and its
+name must be also F<shadow>.
+
+The entries in the Sibyl's shadow file are similar to those of an ordinary shadow
+file except for the second argument. The Sibyl stores the passwords as the concatenation
+of a 'salt' and the base64
+encoding of the RSA encryption (with the Sibyl's public signing key, stored as
+F</etc/sibyl/sign.pub>) of the output of the system's password hashing function.
+This is, for Linux and most Unices, the I<crypt(3)> function. In Leopard, the SHA1 function with
+salting is used.
+
+=head1 FILES USED
+
+The file F<sign.pub>, usually stored in F</etc/sibyl> is essential for the
+correct functioning of the Sibyl. This file must be the RSA public key associated
+with the Sibyl's private signing key. As such, it must be in sync with the Sibyl's
+files.
+
+=head1 USAGE
+
+shadow2sibyl expects input from stdin and writes the output to stdout, so the normal
+usage is as follows:
+
+=over
+
+shadow2sibyl < input > output
+
+=back
+
+=head1 SEE ALSO
+
+sibyl(n), sibyl_srv(n), sibyl_client(n), pam_sibyl(n), passwd(5).
+
+=head1 AUTHORS
+
+shadow2sibyl was written by Pedro Fortuny <info@pfortuny.net> and Rafael Casado <rafacas@gmail.com>
+

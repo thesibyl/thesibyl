@@ -1,0 +1,12 @@
+get user UID:
+# a=`dscl localhost -read /Search/Users/<username>|grep GeneratedUID | cut -c15-`
+get user's shadow entry
+# cat /var/db/shadow/hash/$a
+specifically, the salted sha1 part:
+# cat /var/db/shadow/hash/$a | cut -c169-216
+The 4 first bytes are the salt, the 20 following, the sha1
+BIN_SALT=`cat /var/db/shadow/hash/$a | cut -c169-172|xxd -r`
+SHA_HASH=`printf "%s%s" ${BIN_SALT} "<password>" | openssl dgst  -sha1 | tr 'a-z' 'A-Z'`
+echo $SHA_HASH
+gives the 'second' part of the hash (that is, cut -c173-216 above)
+

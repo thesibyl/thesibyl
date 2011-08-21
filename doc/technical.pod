@@ -1,0 +1,65 @@
+=begin html
+    <meta>
+      <link rel="stylesheet" type="text/css" href="sibyl.css" />
+    </meta>
+    <div id="title">
+      The Sibyl
+    </div>
+    <div id="subtitle">
+      Another layer of security for authentication
+    </div>
+    <p>
+    <div id="menubar">
+      <a href="index.html">Home</a> 
+      <a href="download.html">Download</a>
+      <a href="faq.html">FAQ</a>
+      <a href="sibyl_step_by_step.html">Details</a>
+      <a href="technical.html">Technical</a>
+    </div>
+    </p>
+
+=end html
+
+=head1 Technical description
+
+=begin html
+
+<p>As of today, we have a detailed <a href="sibyl-doc.pdf">paper</a> describing all
+the technicalities of the Sibyl, which we intend to present at a security conference.
+</p>
+
+=end html
+
+=begin html
+
+      <div id="reminder">
+      <p>
+	This security project, the <strong>Sibyl</strong>,  has been
+	invented and implemented by
+	<a href="http://pfortuny.net">Pedro Fortuny</a> and <a href="http://rafacas.net">
+	  Rafael Casado</a>. Keep updated.
+      </p>
+      <p>
+         You can also see <a href="http://www.linkedin.com/profile/view?id=24022019">Pedro</a>'s
+         and <a href="http://www.linkedin.com/profile/view?id=11581943">Rafa</a>'s LinkedIn
+         profiles.
+     </p>
+      <p>
+	All the documentation in this domain is published under a 
+	<a href="http://creativecommons.org/licenses/by/3.0/">Creative Commons-By 
+	  Attribution
+	  licence</a>. All
+	the code is made public subject to
+	the <a href="http://creativecommons.org/licenses/BSD/"> BSD licence</a>.
+      </p>
+      </div>
+    </div>
+    <div id="footer">
+      (c) 2010 Pedro Fortuny Ayuso and Rafael Casado S&aacute;nchez.
+    </div>
+
+
+=end html
+
+
+=cut

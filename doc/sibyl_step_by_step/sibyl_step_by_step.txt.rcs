@@ -1,0 +1,342 @@
+
+ How the Sibyl works [step by step]
+ ============================
+
+ Preparing the Sibyl
+ -------------------
+
+1. First we need a 'Sibyl', which is a different machine from the server we want 
+to log in to. We are using a Bifferboard as a proof of concept
+(http://bifferos.bizhat.com/).
+
+2. We assume a linux distro has been installed on the Sibyl (See the 
+"Install Slackware on a bifferboard" manual if you are using a Bifferboard).
+
+3. Create two RSA key pairs in the Sibyl (we use 2048bit keys): the encryption 
+pair and the signing pair
+
+  3.1 Create the en/decryption pair with openssl. The private key will be named 
+  'decrypt' and the public one 'decrypt.pub'
+
+  # openssl genrsa -out decrypt 2048
+  Generating RSA private key, 2048 bit long modulus
+  ..............................................................................
+  .........................................................+++
+  ...................................+++
+  e is 65537 (0x10001)
+
+  # cat decrypt 
+  -----BEGIN RSA PRIVATE KEY-----
+  MIIEowIBAAKCAQEAwUQqL3lCVrfSQZVfMGfDg8Ee0HGTVk7B0th8Qzmcj/jQidd7
+  cPA0kje0/JPZsXt8i+x1j/JoIoB42CTFfSB7/PcoF39S41xbtYdD7TlJIu1tdYeJ
+  OQavsE4fhTYiUZukNZq33ZTBW41gmeJtaMpGt+PiIodgS8cpEQzoTOXC7mYNQSPI
+  q2KQv+G6dzpBVmAS6khdqSPP0z7A6zA8M90NryUO+/3CpG5YdOSMjCOhvd+DlOfw
+  z/+89dhx6cFXhHMHFoxt/QLwvQgeo5chA2SogirjulAs1gMEGiPnQ/snmzBTvYv0
+  Gw9M7a2Nfxeo4pN3D2lsU1MDbSfTW+IzfUURlQIDAQABAoIBAFLUnB/soHn6Hqrt
+  Efb1Ad6eDk7X3oXHC1sKXXeSYX9y7C2npMgqqt1f8rmtxEdE3YQ6u8gN5IOk/CXm
+  3J1cJsesRgqMD0JSexu59WreenH1wEv24uEF9JZjZS76nIrNYft3bAYTkyth1F0f
+  pjSbPOPjTy/tRWA042zjU0xhzMHPTD2s3W/FLnlckh37+/B5LMA0xKliEK553ZIL
+  PFJo40XceRKzJdfeUNkh/DAJsjBuvmjFdDUhbkeYDQr/fp4AB4dQynZKBrV3GKJw
+  7vL//HWpJ8Ep8SzIRxmYPhllgo4VlNJT0OxTumbkjrtwk3oc87blmPemtS5Df4n7
+  WCkIgqECgYEA6shs7368+uoU8CQkr0Yv49QfRHo6v81i2zR+6RzDczrJgpXNBHU7
+  V7zpDeMk+Reg5np3kx4A6hL7x2Ibm+07gk1ErPNaexEgH5sHpHC5UqkS+YwfxBEl
+  iGFXlyPApboEstitQcVKybvoa4TCVn1tlDvE4YJjkVV9AjgEN7kzYDMCgYEA0rtG
+  PcDImZEpET8M4FT43iPIFCtGvOV2SqnaPnokampxk/1f/GzYp/zcKpJ71NDRU5xV
+  /6+cW/RgYQFMi2rlzhILlYRCCxOJXx6jmR6HB3y7xoEmQMBCJEgBsEi8VKPr8sbl
+  hViRoVtXIKpab4k8glOq0GahT6HCdgVc6By53xcCgYBHXa8HSZ4GIztEF6hzAsGx
+  3hu3A/Rxsuu2uAlPsKeUki0InaJZFY15SPoKd54YfV8yT82jEX6zqBuSarb7uava
+  GsSiUcKSIA2EreovyPf8MVqMMlTBk3i2MOigD4USmy2sc4KOuHrYQV8Pt6YfBjdV
+  1Kku5yR+296I2yAlFA2S0wKBgEbsYqqb/Ke6tFCqoMHLt2rELi2jlw4ySEq+ucY3
+  Q5RROOKu7yQ82fpH3y2w2V553Um/ny4Lw5srN1jOoB14H9noNt/egH/L1nseC7+Y
+  B6gccfJQOzilvF0Low3anQ/7j4jJKixj77eXz04eJ4vMa4INeLrlH7t2XMVt7qPs
+  Lx6HAoGBANco2d1RBvYk1WODeKg3L3yfrcDFMAfMFkmo07u9PrafQBxarJSTvE2v
+  WV+4c//ZblImU6Say3BDwk7tdJNtL+ZPQEJYZd2MEO2vVZzphy5HCoQVgqGLPpTi
+  pwFEyd1nDeZVoFmmW3GoEEa9kQBvXO2mt6rtu9ubokN93wXp7ABd
+  -----END RSA PRIVATE KEY-----
+
+  # openssl rsa -in decrypt -pubout -out decrypt.pub
+  writing RSA key
+
+  # cat decrypt.pub 
+  -----BEGIN PUBLIC KEY-----
+  MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwUQqL3lCVrfSQZVfMGfD
+  g8Ee0HGTVk7B0th8Qzmcj/jQidd7cPA0kje0/JPZsXt8i+x1j/JoIoB42CTFfSB7
+  /PcoF39S41xbtYdD7TlJIu1tdYeJOQavsE4fhTYiUZukNZq33ZTBW41gmeJtaMpG
+  t+PiIodgS8cpEQzoTOXC7mYNQSPIq2KQv+G6dzpBVmAS6khdqSPP0z7A6zA8M90N
+  ryUO+/3CpG5YdOSMjCOhvd+DlOfwz/+89dhx6cFXhHMHFoxt/QLwvQgeo5chA2So
+  girjulAs1gMEGiPnQ/snmzBTvYv0Gw9M7a2Nfxeo4pN3D2lsU1MDbSfTW+IzfUUR
+  lQIDAQAB
+  -----END PUBLIC KEY-----
+
+  3.2 Creating the signing pair with openssl. The private key will be named 
+  'sign' and the public one 'sign.pub'
+
+  root@sibyl:~# openssl genrsa -out sign 2048
+  Generating RSA private key, 2048 bit long modulus
+  ......................+++
+  ..........+++
+  e is 65537 (0x10001)
+
+  # cat sign 
+  -----BEGIN RSA PRIVATE KEY-----
+  MIIEowIBAAKCAQEA5jwDvV7lpErFLcTn4F4CgFbfHSr7xEvVoYu3KJ2QIW1ryZnM
+  pm+J75dBv/oQ1LnFe9S1o+ziG72NhfU6bxlBFGXwGXgpKQLIkl0cMlvMCWDCKOiv
+  diQ+W27k3m22DliU67troB1ZE8ewBIIsQS+NtQrD7aLv9HhP6CwTe5Rtn4S1EuW5
+  e8aAwDjbJME0VGgiheYCetkpHSy8ucIb6jio5eZm3NmqmrxN4UvhbU+kF7cf2ZKw
+  zTIOk5TmJR3wURYIq4n5vEv2ZQxNA6Zv9yjsFkrpp8nd8OchSgulcF0V8/sH+zlP
+  thEXzXkZGWjGe5MtUWMY5LZhmOmMS+HvOfmAKwIDAQABAoIBAGCmoQtGYzDtEol8
+  N7tAu9wUm+UqvjZRf4UpmeI7At6FiNJA9mCIQmeKH9fvqlEjC3xId1gxgVoT4O1z
+  XOx2tZNSl9CZWO4WdQy8ebHKR4VIUTnLNJ1r6aGIlBusAtlS5nFvZGb66wIauhGq
+  c9mJlPuDYWzJEeKW/zSADE28qahkyaiu7+oxtSD7falLgooPmu9DD1h9omFSODjI
+  4PK82n8rZuOav7JndwYOCJQ75e6pM6G62oql+58Q3ZalcBTxh/aTmNkSS2hVCohd
+  DXcnXnK4PNJYJl9qX5Z6Q20apLZKTIKQ+IEgf0LHJdE6NwLqRrZobQA+ekMC789u
+  wJgYHsECgYEA9AzSsGJKMShuKQsOoPOpE+c2ksVQNHm54Bk5sTIfFKeVo3i8C0ec
+  VxQIQya+YUDOl4d+9SVCR1dVVvrl2l6fInOsSxUoDihIqFJSgJKHb4DOneevGd9h
+  IjjvHgWFpHIBetHNbW49/FxRrM8uBEjNYiAl24D+JiMHnusGMi1SnF0CgYEA8YID
+  BnvOWbEYf5XaXZSJaeTmrxljMA0veqLBfxUFlJQECI4owfdF/WApgKCZNL8Yc2Ap
+  DsEqwEPyxJ4YKabRcol+Z3HP0o0BsyiCtCyIRhMBBvGPoWIioL4+AmYFWyq9c7t/
+  IqbgIXDyCzdlVhA4aqMQ/ZaHrIV3c5Jy7SYHhicCgYEAsDZyChluKIBgyhHJxj0o
+  384agW8msj0SENUl6uOdvXQjf501aY+TOuyj6piW7fG1OYQED02PxaMxY1RVko6v
+  qFiNFsl32oELtT17hIpIcCI5DZqzu6Kmp+ckADFMhagrmVrTUShAaW7fKj+NolpO
+  sYM00oEZAMBaSEy6dJB1DaECgYB0cbphsuogptnoEmnSOx8yVrK/dF81uPXOjJD9
+  ZDZnmCKFuX1/YGl3rJj2MvkLzKPOZWwGeC7Tuy9fi9acpplQP2kaGW8Z1vEd4Ad9
+  NgeSufEB1xDowDdwB6pAX85vUaE9HwdCvvFMTnf13oTWxUVebTdw/dZ24Xdh2xfc
+  rjxsewKBgCHs5UbewW2vRwfJdURgaHZkG2FBjRfq03heUvuFUUKbbwy+Ps7s1rzi
+  rQ+RKSsgvhBJc+bf1A3tTTvTPuHi0o+LWAHwJ73cEuMNyzMyDZIwqkcuVi4KJCFz
+  5QiFO/RJg4/ujxotuk3xuBl5gmy/p0NKezMeY0bzMicER8Cmf55V
+  -----END RSA PRIVATE KEY-----
+
+  root@sibyl:~# openssl rsa -in sign -pubout -out sign.pub
+  writing RSA key
+
+  root@sibyl:~# more sign.pub
+  -----BEGIN PUBLIC KEY-----
+  MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5jwDvV7lpErFLcTn4F4C
+  gFbfHSr7xEvVoYu3KJ2QIW1ryZnMpm+J75dBv/oQ1LnFe9S1o+ziG72NhfU6bxlB
+  FGXwGXgpKQLIkl0cMlvMCWDCKOivdiQ+W27k3m22DliU67troB1ZE8ewBIIsQS+N
+  tQrD7aLv9HhP6CwTe5Rtn4S1EuW5e8aAwDjbJME0VGgiheYCetkpHSy8ucIb6jio
+  5eZm3NmqmrxN4UvhbU+kF7cf2ZKwzTIOk5TmJR3wURYIq4n5vEv2ZQxNA6Zv9yjs
+  Fkrpp8nd8OchSgulcF0V8/sH+zlPthEXzXkZGWjGe5MtUWMY5LZhmOmMS+HvOfmA
+  KwIDAQAB
+  -----END PUBLIC KEY-----
+
+
+ Preparing the Authentication Server
+ -----------------------------------
+
+1. Create the /etc/sibyl directory (you probably need to be root to do this).
+
+  # mkdir /etc/sibyl && cd /etc/sibyl
+
+2. Copy the public keys (generated on the sibyl) into the /etc/sibyl directory.
+
+  # scp root@sibyl:*.pub .
+  decrypt.pub
+  sign.pub
+
+   Notice that the private keys *must never leave the Sibyl*. Their secrecy
+   is the basis for the security of this system. We have not password-secured
+   them in the examples, but you might as well do so.
+
+3. Create the file where the user authentication tokens will be stored
+   (/etc/sibyl/shadow). 
+
+  3.1. First, we need to encrypt the user password using the crypt function. 
+  This function takes a password as a string, and a salt character array and 
+  returns a printable ASCII string which starts with the same salt. The salt 
+  serves for two purposes: to select which hashing algorithm is used, the 
+  MD5-based one or the DES-based one, and to make life harder for 
+  someone trying to guess passwords against a file containing many passwords; 
+  without a salt, an intruder can make a guess, run crypt on it once, and 
+  compare the result with all the passwords. With a salt, the intruder must run 
+  crypt once for each different salt.
+
+  In this brief tutorial, we are going to use the MD5-based salt that 
+  consists of the string $1$, followed by up to 8 characters and another $, and 
+  the string. The result of crypt will be the salt, followed by a $ if the salt 
+  didn't end with one, followed by 22 characters from the alphabet ./0-9A-Za-z, 
+  up to 34 characters total. Every character in the key is significant.
+
+  For doing this we provides a short program (crypt.c) that uses the crypt 
+  function with the password passed as an argument and the salt that can be 
+  passed. If not, it will be (not very) randomnly generated.
+
+  Notice that the Sibyl's distribution includes a shadow2sibyl.pl scripts which
+  turns standard shadow files into Sibyl-enabled files. More on this in its
+  man page shadow2sibyl(n).
+
+  # gcc -lcrypt crypt.c -o crypt
+
+  # ./crypt patata
+  $1$56X0AGPE$AvbQvdvZFPkkJetNItkr91
+
+  3.2. The output of the crypt function will be RSA-encrypted using the decryption
+  public key and base64 encoded, that is: base64(RSA_encrypt(crypt(password, salt)))
+
+  # echo "$1$56X0AGPE$AvbQvdvZFPkkJetNItkr91" | \
+    openssl rsautl -encrypt -inkey decrypt.pub -pubin | openssl enc -base64
+  jlWP/arJwMMLbVwpPZn6k7um8+k00lyfJDX+k7WJzQt/wrvb1Lg7XLdWKVNB5+mT
+  1hWah1IX+A4rb4UImHyjKV+L4zLFSiNUbR2YKJCKG7+aOWlYO03fhF5ehuvRVXmW
+  4ouIzEVahn4Jx5rkqqCejdOKJqDftgOArWc+6lwLmPOqHG6Zbn9FaKq9A8OeGrst
+  BleT7MJZ+Oqnbli70tGoQWBeQmMrvnqLejPuqawiwE3ZP5weFWn9vsidp4rY/Qb4
+  ij3vRMznuC3ErcaRBiVH+l2g8t26Q0vLPO+cyuF6xvvKtmwxmZYSThQfebJYjuKn
+  CArtgl6hrIN9ye26N5o5KA==
+
+  This shall be stored without newlines, though (however we include them in this
+  tutorial for clarity).
+
+  3.3. The format of each row (user authentication tokens) in the file 
+  /etc/sibyl/shadow is:
+
+  user : salt base64(RSA_encrypt(crypt(password, salt))) : [other shadow fields]
+
+  In the example, the row will be:
+
+  rafacas:$1$56X0AGPE$jlWP/arJwMMLbVwpPZn6k7um8+k00lyfJDX+k7WJzQt/wrvb1Lg7XLdWKVNB5+mT
+  1hWah1IX+A4rb4UImHyjKV+L4zLFSiNUbR2YKJCKG7+aOWlYO03fhF5ehuvRVXmW
+  4ouIzEVahn4Jx5rkqqCejdOKJqDftgOArWc+6lwLmPOqHG6Zbn9FaKq9A8OeGrst
+  BleT7MJZ+Oqnbli70tGoQWBeQmMrvnqLejPuqawiwE3ZP5weFWn9vsidp4rY/Qb4
+  ij3vRMznuC3ErcaRBiVH+l2g8t26Q0vLPO+cyuF6xvvKtmwxmZYSThQfebJYjuKn
+  CArtgl6hrIN9ye26N5o5KA==:[other shadow fields]
+
+  The parts of the row are:
+    rafacas:$1$56X0AGPE$jlWP/arJwMMLbVwpPZn6k7um8+k00lyfJD... (till 2048 binary bits)
+    |_____| |__________||___________________________________|
+       |         |                       |
+    username     |                       |
+                 |                       |
+                salt                     |
+                 |                       |
+                 |       base64(RSA_encrypt(crypt(password, salt)))
+                 |
+             ____|_____
+            |          |
+            $1$56X0AGPE$AvbQvdvZFPkkJetNItkr91 <- crypt(password, salt)
+
+
+ The Protocol
+ ------------
+
+1.The Authentication Server (AS) connects to the Sibyl and expects to receive
+a random nonce.
+
+2. The Sibyl generates a nonce and sends it to the AS. In the example we use
+the $RANDOM environment variable.
+
+  # export nonce_sibyl=`echo $RANDOM`
+  # echo $nonce_sibyl
+  15509
+
+3. From the password database, the AS gets the real authentication token (p1)
+
+  # grep rafacas shadow | sed 's/rafacas:$1$[^$]\{8\}$\(.*\)/\1/'
+  jlWP/arJwMMLbVwpPZn6k7um8+k00lyfJDX+k7WJzQt/wrvb1Lg7XLdWKVNB5+mT
+  1hWah1IX+A4rb4UImHyjKV+L4zLFSiNUbR2YKJCKG7+aOWlYO03fhF5ehuvRVXmW
+  4ouIzEVahn4Jx5rkqqCejdOKJqDftgOArWc+6lwLmPOqHG6Zbn9FaKq9A8OeGrst
+  BleT7MJZ+Oqnbli70tGoQWBeQmMrvnqLejPuqawiwE3ZP5weFWn9vsidp4rY/Qb4
+  ij3vRMznuC3ErcaRBiVH+l2g8t26Q0vLPO+cyuF6xvvKtmwxmZYSThQfebJYjuKn
+  CArtgl6hrIN9ye26N5o5KA==:::::::
+
+4. The AS grabs the password entered by the logging user.
+
+  # echo -n "Password:"; read password
+  Password:patata
+  # echo $password
+  patata
+
+5. The AS encrypts, using the crypt function, the password entered by the logging 
+user. We are going to use the crypt program provided by the example.
+
+  We need the salt used in the first crypt:
+
+  # export salt=$(echo $p1 | sed 's/^\(\$1\$[^\$]*\$\).*/\1/')
+  # echo $salt
+  $1$56X0AGPE$
+  
+  # export pass_crypted=`./crypt $password $salt`
+  # echo $pass_crypted
+  $1$56X0AGPE$AvbQvdvZFPkkJetNItkr91
+
+6. The AS encrypts "$nonce_sibyl:$pass_crypted" using the Sibyl's public key to get p2.
+The result will be base64 encoded.
+
+  Compute p2=base64_encode(RSA_encrypt("nonce_sibyl:crypt(password,salt)))
+
+  # echo $nonce_sibyl:$pass_crypted | \
+    openssl rsautl -encrypt -inkey decrypt.pub -pubin | \
+    openssl enc -base64
+  SMzBKPKnaJKtqI7IHFTT3jWJ3OBSew4bNpa0ArzpO/xWrAujUtmKydvRUET8WvOt
+  TmSlIupcw6Ivc2Bu54feV63ou8ZOZEYOurMF1BVLJ24lF24xmmHBBOHp94zT0ySy
+  xScp8lXghCnD8z5YHgnu9p9hn7jnAMeO5ty/Yk4j19kGPHy0+arnv0Pgw9mgfhcV
+  RntBj5LJk9n5lxVxg8lP/RZXripFrxeGDetVPAfZMsA9glSh5tnTqQO5/8PiCD3b
+  oLD1gET9tpOGI/ECXT7nEG/FcK7p8J7gbkXlnY6Unz9jD96FYuz8yl4tFrOUvW87
+  WtQxFIHqspvGwAFlnJW4hA==
+
+7. The AS sends $nonce_as;$p1;$p2 to the Sibyl.
+Note that this nonce is different from the one received from the Sibyl.
+
+  Generate the nonce:
+
+  # export nonce_as=`echo $RANDOM`
+  # echo $nonce_as
+  28145
+
+  The AS sends $nonce_as;$p1;p2
+
+8. The Sibyl decrypts p1 (=u1)
+
+  # echo 'jlWP/arJwMMLbVwpPZn6k7um8+k00lyfJDX+k7WJzQt/wrvb1Lg7XLdWKVNB5+mT
+    1hWah1IX+A4rb4UImHyjKV+L4zLFSiNUbR2YKJCKG7+aOWlYO03fhF5ehuvRVXmW
+    4ouIzEVahn4Jx5rkqqCejdOKJqDftgOArWc+6lwLmPOqHG6Zbn9FaKq9A8OeGrst
+    BleT7MJZ+Oqnbli70tGoQWBeQmMrvnqLejPuqawiwE3ZP5weFWn9vsidp4rY/Qb4
+    ij3vRMznuC3ErcaRBiVH+l2g8t26Q0vLPO+cyuF6xvvKtmwxmZYSThQfebJYjuKn
+    CArtgl6hrIN9ye26N5o5KA==' | openssl enc -base64 -d | \   
+    openssl rsautl -decrypt -inkey decrypt
+  $1$56X0AGPE$AvbQvdvZFPkkJetNItkr91
+
+9. The Sibyl decrypts p2 (=u2)
+
+  # echo "SMzBKPKnaJKtqI7IHFTT3jWJ3OBSew4bNpa0ArzpO/xWrAujUtmKydvRUET8WvOt
+    TmSlIupcw6Ivc2Bu54feV63ou8ZOZEYOurMF1BVLJ24lF24xmmHBBOHp94zT0ySy
+    xScp8lXghCnD8z5YHgnu9p9hn7jnAMeO5ty/Yk4j19kGPHy0+arnv0Pgw9mgfhcV
+    RntBj5LJk9n5lxVxg8lP/RZXripFrxeGDetVPAfZMsA9glSh5tnTqQO5/8PiCD3b
+    oLD1gET9tpOGI/ECXT7nEG/FcK7p8J7gbkXlnY6Unz9jD96FYuz8yl4tFrOUvW87
+    WtQxFIHqspvGwAFlnJW4hA==" | \
+    openssl enc -base64 -d | openssl rsautl -decrypt -inkey decrypt
+  15509:$1$56X0AGPE$AvbQvdvZFPkkJetNItkr91
+
+10. The Sibyl checks that u2 matches the pattern /^n:(.*)$/ and sets v1=$1.
+Recall that n is the Sibyl's nonce.
+
+  # echo "15509:\$1\$56X0AGPE\$AvbQvdvZFPkkJetNItkr91" | sed 's/^[0-9]*:\(.*\)$/v1=\1/'
+  v1=$1$56X0AGPE$AvbQvdvZFPkkJetNItkr91
+
+11. If u1=v1 then the Sibyl returns the message $nonce_as:1 signed with the
+signing key. Otherwise, it returns the message m:0 signed with the same key.
+
+  In this example u1=v1 so we will send $nonce_as:1 (signed with the sign private key)
+
+  # echo '28145:1' | openssl rsautl -sign -inkey sign | openssl enc -base64
+  UtVb/m1VAH0qHr/nmqiE9Y8BieN3XzoMshH7cp5qvH976SIAwVGUelUfllQ7DS4n
+  ZL4thteGn+sG608UWX8rS5/DgEFg2YjPHCls3z8MVVm8Gtite9/vn55IA2HfeNoq
+  8wPC0vcP48nCmE0U3QerCLqNtUyluOhoqXUJUYLPZfHXmzNK+S7tPlyM3abCwtlH
+  zOcR11nFRi9YihbY36H64dSMQi9CY+e1er/i4469gT7PmH7yosH38bEcMLDEYR5L
+  rYH+5oTrx3HLjk9X6zxjaClDC1NTVmLrCV40Nvy2/1qqJ9UZMBqRwrch0AABKmoV
+  JbcPmbYONk3kx/6FA+auiA==
+
+12. The AS receives the signed message from the Sibil and checks if it is properly
+signed
+
+  # echo 'UtVb/m1VAH0qHr/nmqiE9Y8BieN3XzoMshH7cp5qvH976SIAwVGUelUfllQ7DS4n
+    ZL4thteGn+sG608UWX8rS5/DgEFg2YjPHCls3z8MVVm8Gtite9/vn55IA2HfeNoq
+    8wPC0vcP48nCmE0U3QerCLqNtUyluOhoqXUJUYLPZfHXmzNK+S7tPlyM3abCwtlH
+    zOcR11nFRi9YihbY36H64dSMQi9CY+e1er/i4469gT7PmH7yosH38bEcMLDEYR5L
+    rYH+5oTrx3HLjk9X6zxjaClDC1NTVmLrCV40Nvy2/1qqJ9UZMBqRwrch0AABKmoV
+    JbcPmbYONk3kx/6FA+auiA==' | openssl enc -base64 -d | openssl rsautl -verify \
+    -inkey sign.pub -pubin
+  28145:1
+
+13. As $nonce_as is equal to the number received in the first part of the message
+(28145) and the second part of it is 1, the AS grants authentication. In any 
+other case, it is denied.
+
