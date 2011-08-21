@@ -385,6 +385,19 @@ int main (int argc, char *argv[])
 			printf("nonce: %s\n", p2_token[0]);
 			printf("v1: %s\n", p2_token[1]);
 
+			/* Is the password correct? */
+			u_char auth_result;
+			if((strcmp(p1_data, p2_token[1]) == 0) && 
+			   (strcmp(strnonce, p2_token[0]) == 0)){
+				auth_result = '1';
+				printf("auth ok\n");
+			} else {
+				auth_result = '0';
+				printf("auth NOok\n");
+			}
+
+			printf("result: %c\n", auth_result);
+
 
 			/* Close socket */
 			close(newsock);
