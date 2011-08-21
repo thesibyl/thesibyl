@@ -368,7 +368,23 @@ int main (int argc, char *argv[])
 			printf("p2_data: %s\n", p2_data);
 
 			/* Calculates v1, that is: p2_data = n:v1 */
-			
+			char *p2_token[2];
+			/* p2_token[0] = nonce */
+			p2_token[0] = strsep(&p2_data, ":");
+			if(p2_token[0] == NULL){
+				perror("Malformed p2_data");
+				exit(1);
+			}
+			/* p2_token[1] = v1 */
+			p2_token[1] = strsep(&p2_data, ":");
+			if(p2_token[1] == NULL){
+				perror("Malformed p2_data");
+				exit(1);
+			}
+
+			printf("nonce: %s\n", p2_token[0]);
+			printf("v1: %s\n", p2_token[1]);
+
 
 			/* Close socket */
 			close(newsock);
