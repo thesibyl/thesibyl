@@ -341,18 +341,8 @@ int main (int argc, char *argv[])
 				 (u_char *)p2_rsa,
 				 RSA_size(decrypt) + 1);
 
-			/* encode p2_rsa to b64 again for testing purposes */
-			char *p2_b64 = (char *)malloc(RSA_size(decrypt) * 4);
-			b64_ntop((u_char *)p2_rsa,
-				 RSA_size(decrypt),
-				 p2_b64,
-				 RSA_size(decrypt) * 4);
-			printf("p2_b64: %s\n", p2_b64);
-
 
 			char *p2_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
-
-			printf("strlen(p2_rsa): %i\n", (int)strlen(p2_rsa));
 
 			rsa_d = RSA_private_decrypt(RSA_size(decrypt),
 						    (u_char *)p2_rsa,
@@ -386,18 +376,96 @@ int main (int argc, char *argv[])
 			printf("v1: %s\n", p2_token[1]);
 
 			/* Is the password correct? */
-			u_char auth_result;
+			char *auth_result = calloc(1, sizeof(char));
 			if((strcmp(p1_data, p2_token[1]) == 0) && 
 			   (strcmp(strnonce, p2_token[0]) == 0)){
-				auth_result = '1';
+				auth_result = "1";
 				printf("auth ok\n");
 			} else {
-				auth_result = '0';
+				auth_result = "0";
 				printf("auth NOok\n");
 			}
 
-			printf("result: %c\n", auth_result);
+			/* Create the response, which is as follows:
+ 			 * M;signature
+ 			 * where M is a message (text without semicolons)
+ 			 * 	M has the following structure:
+ 			 * 	M = n:X
+ 			 * 	where
+ 			 * 	n is the nonce received from the client before
+ 			 * 	X is either '0' or '1', for 'Not authenticated' or 'Authenticated'
+ 			 * signature is the RSA signature of M
+ 			 * 	actually (b64_encode(signature))
+ 			 *
+ 			 * */
+			char *message;
+			message = (char *) calloc(strlen(token[0]) + 1 + 
+						  strlen(auth_result), sizeof(char));
+			if (message == NULL){
+				perror("Unable to allocate memory for message");
+				exit(1);
+			}
+			// TODO: use strncat instead of strcat with a NONCE_LENGHT const
+			strcat(message, token[0]);
+			strcat(message, ":");
+			strcat(message, auth_result);
 
+			printf("message: %s\n", message);
+
+			/* computes the SHA-1 message digest (20 bytes) */
+			char *sha1_m = (char *) calloc(20, sizeof(char));
+			if (sha1_m == NULL){
+				perror("Unable to allocate memory for sha1_m");
+				exit(1);
+			}
+			SHA1((u_char *)message, strlen(message), (u_char*)sha1_m); 
+
+			/* sign the message digest */
+			char *signature = (char *) malloc(RSA_size(sign) + 1);
+			if (signature == NULL){
+				perror("Unable to allocate memory for signature");
+				exit(1);
+			}
+			u_int siglen;
+			siglen = RSA_size(sign);
+			if (RSA_sign(NID_sha1,
+				     (u_char *)sha1_m,
+				     20,
+				     (u_char *)signature,
+				     &siglen,
+				     sign) != 1){
+				perror("Error signing the message");
+				exit(1);
+			}
+
+			/* encode the signature to base-64 */
+			char *signature_b64 = (char *)malloc(RSA_size(sign) * 4);
+			b64_ntop((u_char *)signature,
+				 RSA_size(sign),
+				 signature_b64,
+				 RSA_size(sign) * 4);
+
+			printf("signature_b64: %s\n", signature_b64);
+
+			/* creates the response string */
+			char *response;
+			response = (char *) calloc(strlen(message) + 1 +
+						   strlen(signature_b64), sizeof(char));
+			if (response == NULL){
+				perror("Unable to allocate memory for response");
+				exit(1);
+			}
+			strcat(response, message);
+			strcat(response, ";");
+			strcat(response, signature_b64);
+
+			printf("response: %s\n", response);
+
+			/* Send response */
+			if (send(newsock, response, strlen(response), 0) == -1){
+				perror("send response");
+				exit(1);
+			}
 
 			/* Close socket */
 			close(newsock);
