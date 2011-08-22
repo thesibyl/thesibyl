@@ -2,8 +2,11 @@ include Makefile.inc
 
 export LIBS = -lcrypto # -lcrypt
 export LIBS += -lpam
+export INC  = -I/Developer/SDKs/MacOSX10.6.sdk/usr/include/
+export LIBDIR = /Developer/SDKs/MacOSX10.6.sdk/usr/lib
 
-default: pam_exec pam_sibyl
+default: pam_sibyl
+#pam_exec pam_sibyl
 
 # should be a loop, but does not work on OS X
 keys: sign
