@@ -72,7 +72,7 @@ int main (int argc, char *argv[])
 	if(strlen(SIBYLDIR) >= _POSIX_PATH_MAX ||
 	   FILE_LEN >= _POSIX_PATH_MAX ||
 	   (strlen(SIBYLDIR) + 1 + FILE_LEN) >= _POSIX_PATH_MAX){
-		perror("dir lenght");
+		perror("dir length");
 		exit(1);
 	}
 
@@ -85,11 +85,11 @@ int main (int argc, char *argv[])
 	/* Fetch the private keys */
 	FILE *decr_f, *sign_f;
 	if((decr_f = fopen(decr_fname, "r")) == NULL){
-		perror("Unable to alloate memory for decr_f");
+		perror("Unable to open file decr_f");
 		exit(1);
 	}
 	if((sign_f = fopen(sign_fname, "r")) == NULL){
-		perror("Unable to allocate memory for sign_f");
+		perror("Unable to open file sign_f");
 		exit(1);
 	}
 
@@ -112,13 +112,13 @@ int main (int argc, char *argv[])
 	PEM_read_RSAPrivateKey(sign_f, &sign, NULL, NULL);
 
 	if(decrypt->n == NULL){
-		perror("Unable to read the RSA decrypt key");
+		perror("Error reading the RSA decrypt key");
 		fclose(decr_f);
 		fclose(sign_f);
 		exit(1);
 	}
 	if(sign->n == NULL){
-		perror("Unable to read the RSA sign key");
+		perror("Error reading the RSA sign key");
 		fclose(decr_f);
 		fclose(sign_f);
 		exit(1);
@@ -126,11 +126,13 @@ int main (int argc, char *argv[])
 	fclose(decr_f);
 	fclose(sign_f);
 
-	printf("Private keys read\n");
-
+#ifdef DEBUG
+        printf("Private keys read\n");
+#endif
 	/* Start listening */
 	if ((status = getaddrinfo(NULL, SIBYLPORT, &hints, &srvinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+                // return status?
 		return 1;
 	}
 
@@ -144,13 +146,13 @@ int main (int argc, char *argv[])
 
 		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes,
 				sizeof(int)) == -1){
-			perror("setsockopt");
+			perror("server: setsockopt");
 			continue;
 		}
 
   	if (bind(sock, p->ai_addr, p->ai_addrlen) == -1) {
 			close(sock);
-			perror("perror: bind");
+			perror("server: bind");
 			continue;
 		}
 
@@ -159,6 +161,7 @@ int main (int argc, char *argv[])
 
 	if (p == NULL) {
 		fprintf(stderr, "server: failed to bind\n");
+                //return 2? should be a macro, should it not?
 		return 2;
 	}
 
@@ -166,6 +169,7 @@ int main (int argc, char *argv[])
 
 	if (listen(sock, BACKLOG) == -1) {
 		perror("listen");
+                // exit(1)?? macros everywhere...
 		exit(1);
 	}
 
@@ -174,16 +178,19 @@ int main (int argc, char *argv[])
 	sa.sa_flags = SA_RESTART;
 	if (sigaction(SIGCHLD, &sa, NULL) == -1){
 		perror("sigaction");
+                // exit -> macros...
 		exit(1);
 	}
 
+#ifdef DEBUG
 	printf("Waiting for connections...\n");
+#endif
 
 	while(1){
 		sin_size = sizeof client_addr;
 		newsock = accept(sock, (struct sockaddr *)&client_addr, &sin_size);
 		if (newsock == -1){
-			perror("accept");
+			perror("server: accept");
 			continue;
 		}
 
@@ -195,6 +202,7 @@ int main (int argc, char *argv[])
 			close(sock); // child doesn't need the listener
 
 			// seed some bytes into the PRNG
+                        // I copied this from somewhere, do you know the reference?
 			FILE *rand_f;
 			int seed;
 			struct timeval tv;
@@ -212,6 +220,7 @@ int main (int argc, char *argv[])
 			RAND_seed((const void *)&seed, sizeof(seed));
 
 			// generate a random nonce.
+                        // this may need to be larger than 8 bytes
 			u_char nonce[9];
 			int count;
 			char *strnonce;
@@ -261,11 +270,15 @@ int main (int argc, char *argv[])
 				if((count_bytes += bytes_rcvd) > SIBYL_MAX_MSG){
 					perror("Sibyl's client is sending more bytes than"
 					       "necessary");
+                                        // we exit here because the client is cheating
 					exit(1);
 				}
 			}
 
+// no need to log all the messages, I reckon
+#ifdef DEBUG
 			printf("Received: [%s]\n", msg);
+#endif
 
 			/* parse message, which is as follows: 
 			 * m;p1;p2\n@@\n
@@ -281,7 +294,11 @@ int main (int argc, char *argv[])
  			 */
 
 			/* remove the end-of-message notification */
-			char *new_msg = (char *)malloc(count_bytes-4);
+			char *new_msg = (char *)calloc(count_bytes-4, sizeof(char));
+                        if(new_msg == NULL){
+                                perror("Unable to allocate memory for new_msg");
+                                exit(1);
+                        }
 			strncpy(new_msg, msg, count_bytes-4);
 
 			char *token[3];
@@ -309,18 +326,27 @@ int main (int argc, char *argv[])
 				exit(1);
 			}
 
+#ifdef DEBUG
 			printf("m : %s\n", token[0]);
 			printf("p1 : %s\n", token[1]);
 			printf("p2 : %s\n", token[2]);
-
+#endif
 			/* decrypt p1 (p1 = token[1]) */
 			int rsa_d;
-			char *p1_rsa = (char *)malloc(RSA_size(decrypt) + 1);
+			char *p1_rsa = (char *)calloc(RSA_size(decrypt) + 1, 1);
+                        if(p1_rsa == NULL){
+                                perror("Unable to allocate memory for p1_rsa");
+                                exit(1);
+                        }
 			b64_pton(token[1],
 				 (u_char *)p1_rsa,
 				 RSA_size(decrypt) + 1);
 
 			char *p1_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
+                        if(p1_data == NULL){
+                                perror("Unable to allocate memory for p1_data");
+                                exit(1);
+                        }
 
 			rsa_d = RSA_private_decrypt(RSA_size(decrypt),
 						    (u_char *)p1_rsa,
@@ -333,16 +359,24 @@ int main (int argc, char *argv[])
 				exit(1);
 			}
 
+#ifdef DEBUG
 			printf("p1_data: %s\n", p1_data);
-
+#endif
 			/* decrypt p2 (p2 = token[2]) */
-			char *p2_rsa = (char *)malloc(RSA_size(decrypt) + 1);
+			char *p2_rsa = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
+                        if(p2_rsa == NULL){
+                                perror("Unable to allocate memory for p2_rsa");
+                                exit(1);
+                        }
 			b64_pton(token[2],
 				 (u_char *)p2_rsa,
 				 RSA_size(decrypt) + 1);
 
-
 			char *p2_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
+                        if(p2_data == NULL){
+                                perror("Unable to allocate memory for p2_data");
+                                exit(1);
+                        }
 
 			rsa_d = RSA_private_decrypt(RSA_size(decrypt),
 						    (u_char *)p2_rsa,
@@ -355,7 +389,9 @@ int main (int argc, char *argv[])
 				exit(1);
 			}
 
+#ifdef DEBUG
 			printf("p2_data: %s\n", p2_data);
+#endif
 
 			/* Calculates v1, that is: p2_data = n:v1 */
 			char *p2_token[2];
@@ -372,11 +408,17 @@ int main (int argc, char *argv[])
 				exit(1);
 			}
 
+#ifdef DEBUG
 			printf("nonce: %s\n", p2_token[0]);
 			printf("v1: %s\n", p2_token[1]);
+#endif
 
 			/* Is the password correct? */
 			char *auth_result = calloc(1, sizeof(char));
+                        if(auth_result == NULL){
+                                perror("Unable to allocate memory for auth_result");
+                                exit(1);
+                        }
 			if((strcmp(p1_data, p2_token[1]) == 0) && 
 			   (strcmp(strnonce, p2_token[0]) == 0)){
 				auth_result = "1";
@@ -421,7 +463,7 @@ int main (int argc, char *argv[])
 			SHA1((u_char *)message, strlen(message), (u_char*)sha1_m); 
 
 			/* sign the message digest */
-			char *signature = (char *) malloc(RSA_size(sign) + 1);
+			char *signature = (char *) calloc(RSA_size(sign) + 1, 1);
 			if (signature == NULL){
 				perror("Unable to allocate memory for signature");
 				exit(1);
@@ -439,13 +481,19 @@ int main (int argc, char *argv[])
 			}
 
 			/* encode the signature to base-64 */
-			char *signature_b64 = (char *)malloc(RSA_size(sign) * 4);
+			char *signature_b64 = (char *)calloc(RSA_size(sign) * 4,1);
+                        if(signature_b64 == NULL){
+                                perror("Unable to allocate memory for signature_b64");
+                                exit(1);
+                        }
 			b64_ntop((u_char *)signature,
 				 RSA_size(sign),
 				 signature_b64,
 				 RSA_size(sign) * 4);
 
+#ifdef DEBUG
 			printf("signature_b64: %s\n", signature_b64);
+#endif
 
 			/* creates the response string */
 			char *response;
@@ -459,7 +507,9 @@ int main (int argc, char *argv[])
 			strcat(response, ";");
 			strcat(response, signature_b64);
 
+#ifdef DEBUG
 			printf("response: %s\n", response);
+#endif
 
 			/* Send response */
 			if (send(newsock, response, strlen(response), 0) == -1){
