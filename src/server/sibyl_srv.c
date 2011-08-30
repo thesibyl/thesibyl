@@ -21,15 +21,10 @@
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
+#include "sibyl.h"
+
 #include "bsd-base64.h"
 
-#define SIBYLPORT "9999"	// Sibyl default port
-#define BACKLOG 20		// how many pending connections queue will hold
-#define SIBYLDIR "/usr/local/sibyl"	// Sibyl keys and config dir
-#define DECR_KEY "decrypt"
-#define SIGN_KEY "sign"
-#define FILE_LEN strlen("decrypt.pub")
-#define SIBYL_MAX_MSG 65535
 
 void sigchld_handler(int s)
 {
@@ -66,31 +61,29 @@ int main (int argc, char *argv[])
 	sign_fname = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
 	if(decr_fname == NULL || sign_fname == NULL){
 		perror("decr_fname or sign_fname alloc");
-		exit(1);
+		exit(errno);
 	}
 
-	if(strlen(SIBYLDIR) >= _POSIX_PATH_MAX ||
+	if(strlen(SIBYL_DIR) >= _POSIX_PATH_MAX ||
 	   FILE_LEN >= _POSIX_PATH_MAX ||
-	   (strlen(SIBYLDIR) + 1 + FILE_LEN) >= _POSIX_PATH_MAX){
+	   (strlen(SIBYL_DIR) + 1 + FILE_LEN) >= _POSIX_PATH_MAX){
 		perror("dir length");
-		exit(1);
+		exit(errno);
 	}
 
 	// TODO: names should be configurable
-	strncat(decr_fname, SIBYLDIR, _POSIX_PATH_MAX);
-	strncat(decr_fname, "/decrypt", strlen("/decrypt"));
-	strncat(sign_fname, SIBYLDIR, _POSIX_PATH_MAX);
-	strncat(sign_fname, "/sign", strlen("/sign"));
+        snprintf(decr_fname, _POSIX_PATH_MAX, "%s/%s", SIBYL_DIR, SIBYL_DECR_KEY);
+        snprintf(sign_fname, _POSIX_PATH_MAX, "%s/%s", SIBYL_DIR, SIBYL_SIGN_KEY);
 
 	/* Fetch the private keys */
 	FILE *decr_f, *sign_f;
 	if((decr_f = fopen(decr_fname, "r")) == NULL){
 		perror("Unable to open file decr_f");
-		exit(1);
+		exit(errno);
 	}
 	if((sign_f = fopen(sign_fname, "r")) == NULL){
 		perror("Unable to open file sign_f");
-		exit(1);
+		exit(errno);
 	}
 
 	/* RSA *decrypt *sign */
@@ -99,11 +92,11 @@ int main (int argc, char *argv[])
 	sign = (RSA *) calloc(1, sizeof(RSA));
 	if((decrypt = RSA_new()) == NULL){
 		perror("Unable to RSA_new() decrypt");
-		exit(1);
+		exit(errno);
 	}
 	if((sign = RSA_new()) == NULL){
 		perror("Unable to RSA_new() sign");
-		exit(1);
+		exit(errno);
 	}
 
 
@@ -115,22 +108,23 @@ int main (int argc, char *argv[])
 		perror("Error reading the RSA decrypt key");
 		fclose(decr_f);
 		fclose(sign_f);
-		exit(1);
+		exit(errno);
 	}
 	if(sign->n == NULL){
 		perror("Error reading the RSA sign key");
 		fclose(decr_f);
 		fclose(sign_f);
-		exit(1);
+		exit(errno);
 	}
 	fclose(decr_f);
 	fclose(sign_f);
 
+/* all these should be D(...) as in sibyl.h: please fix */
 #ifdef DEBUG
         printf("Private keys read\n");
 #endif
 	/* Start listening */
-	if ((status = getaddrinfo(NULL, SIBYLPORT, &hints, &srvinfo)) != 0) {
+	if ((status = getaddrinfo(NULL, SIBYL_PORT, &hints, &srvinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
                 // return status?
 		return 1;
@@ -167,10 +161,9 @@ int main (int argc, char *argv[])
 
 	freeaddrinfo(srvinfo);
 
-	if (listen(sock, BACKLOG) == -1) {
+	if (listen(sock, SIBYL_BACKLOG) == -1) {
 		perror("listen");
-                // exit(1)?? macros everywhere...
-		exit(1);
+		exit(errno);
 	}
 
 	sa.sa_handler = sigchld_handler; // reap all dead processes
@@ -178,8 +171,7 @@ int main (int argc, char *argv[])
 	sa.sa_flags = SA_RESTART;
 	if (sigaction(SIGCHLD, &sa, NULL) == -1){
 		perror("sigaction");
-                // exit -> macros...
-		exit(1);
+		exit(errno);
 	}
 
 #ifdef DEBUG
@@ -227,7 +219,7 @@ int main (int argc, char *argv[])
 			strnonce = (char *) calloc(17, sizeof(char));
 			if (strnonce == NULL){
 				perror("strnonce calloc");
-				exit(1);
+				exit(errno);
 			}
 			RAND_bytes(nonce, 8);
 			for(count = 0; count < 8; count++)
@@ -235,13 +227,13 @@ int main (int argc, char *argv[])
 			// send the nonce
 			if (send(newsock, strnonce, 17, 0) == -1){
 				perror("send strnonce");
-				exit(1);
+				exit(errno);
 			}
 
 			// the nonce ends in '@'
 			if (send(newsock, "@", 1, 0) == -1){
 				perror("send '@'");
-				exit(1);
+				exit(errno);
 			}
 
 			/* receive the client's message */
@@ -249,7 +241,7 @@ int main (int argc, char *argv[])
 			msg = (char *) calloc(SIBYL_MAX_MSG, sizeof(char));
 			if(msg == NULL){
 				perror("Unable to allocate memory for the client's message");
-				exit(1);
+				exit(errno);
 			}
 
 			int count_bytes = 0;
@@ -265,13 +257,13 @@ int main (int argc, char *argv[])
 					       "received [%i] bytes through [%i], and "
 					       "till now the message was [%s]",
 					       bytes_rcvd, newsock, msg);
-					exit(1);
+					exit(SIBYL_RECV_ERROR);
 				}
 				if((count_bytes += bytes_rcvd) > SIBYL_MAX_MSG){
 					perror("Sibyl's client is sending more bytes than"
 					       "necessary");
                                         // we exit here because the client is cheating
-					exit(1);
+					exit(SIBYL_NASTY_CLIENT);
 				}
 			}
 
@@ -297,7 +289,7 @@ int main (int argc, char *argv[])
 			char *new_msg = (char *)calloc(count_bytes-4, sizeof(char));
                         if(new_msg == NULL){
                                 perror("Unable to allocate memory for new_msg");
-                                exit(1);
+                                exit(errno);
                         }
 			strncpy(new_msg, msg, count_bytes-4);
 
@@ -306,24 +298,24 @@ int main (int argc, char *argv[])
 			token[0] = strsep(&new_msg, ";");
 			if(token[0] == NULL){
 				perror("Malformed message received from the client");
-				exit(1);
+				exit(SIBYL_MALFORMED_MSG);
 			}
 			/* token[1] = p1 */
 			token[1] = strsep(&new_msg, ";");
 			if(token[1] == NULL){
 				perror("Malformed message received from the client");
-				exit(1);
+				exit(SIBYL_MALFORMED_MSG);
 			}
 			/* token[2] = p2 */
 			token[2] = strsep(&new_msg, ";");
 			if(token[2] == NULL){
 				perror("Malformed message received from the client");
-				exit(1);
+				exit(SIBYL_MALFORMED_MSG);
 			}
 			/* there should not be more tokens */
 			if(strsep(&new_msg, ";") != NULL){
 				perror("Malformed message received from the client");
-				exit(1);
+				exit(SIBYL_MALFORMED_MSG);
 			}
 
 #ifdef DEBUG
@@ -336,7 +328,7 @@ int main (int argc, char *argv[])
 			char *p1_rsa = (char *)calloc(RSA_size(decrypt) + 1, 1);
                         if(p1_rsa == NULL){
                                 perror("Unable to allocate memory for p1_rsa");
-                                exit(1);
+                                exit(errno);
                         }
 			b64_pton(token[1],
 				 (u_char *)p1_rsa,
@@ -345,7 +337,7 @@ int main (int argc, char *argv[])
 			char *p1_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
                         if(p1_data == NULL){
                                 perror("Unable to allocate memory for p1_data");
-                                exit(1);
+                                exit(errno);
                         }
 
 			rsa_d = RSA_private_decrypt(RSA_size(decrypt),
@@ -355,8 +347,8 @@ int main (int argc, char *argv[])
 						    RSA_PKCS1_OAEP_PADDING);
 
 			if (rsa_d == -1){
-				perror("p1 RSA decryption error");
-				exit(1);
+                                ERR_print_errors();
+				exit(SIBYL_OPENSSL_ERROR);
 			}
 
 #ifdef DEBUG
@@ -366,7 +358,7 @@ int main (int argc, char *argv[])
 			char *p2_rsa = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
                         if(p2_rsa == NULL){
                                 perror("Unable to allocate memory for p2_rsa");
-                                exit(1);
+                                exit(errno);
                         }
 			b64_pton(token[2],
 				 (u_char *)p2_rsa,
@@ -375,7 +367,7 @@ int main (int argc, char *argv[])
 			char *p2_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
                         if(p2_data == NULL){
                                 perror("Unable to allocate memory for p2_data");
-                                exit(1);
+                                exit(errno);
                         }
 
 			rsa_d = RSA_private_decrypt(RSA_size(decrypt),
@@ -385,8 +377,8 @@ int main (int argc, char *argv[])
 						    RSA_PKCS1_OAEP_PADDING);
 
 			if (rsa_d == -1){
-				perror("p2 RSA decryption error");
-				exit(1);
+                                ERR_print_errors();
+				exit(SIBYL_OPENSSL_ERROR);
 			}
 
 #ifdef DEBUG
@@ -399,13 +391,13 @@ int main (int argc, char *argv[])
 			p2_token[0] = strsep(&p2_data, ":");
 			if(p2_token[0] == NULL){
 				perror("Malformed p2_data");
-				exit(1);
+				exit(SIBYL_MALFORMED_MSG);
 			}
 			/* p2_token[1] = v1 */
 			p2_token[1] = strsep(&p2_data, ":");
 			if(p2_token[1] == NULL){
 				perror("Malformed p2_data");
-				exit(1);
+				exit(SIBYL_MALFORMED_MSG);
 			}
 
 #ifdef DEBUG
@@ -417,7 +409,7 @@ int main (int argc, char *argv[])
 			char *auth_result = calloc(1, sizeof(char));
                         if(auth_result == NULL){
                                 perror("Unable to allocate memory for auth_result");
-                                exit(1);
+                                exit(errno);
                         }
 			if((strcmp(p1_data, p2_token[1]) == 0) && 
 			   (strcmp(strnonce, p2_token[0]) == 0)){
@@ -445,7 +437,7 @@ int main (int argc, char *argv[])
 						  strlen(auth_result), sizeof(char));
 			if (message == NULL){
 				perror("Unable to allocate memory for message");
-				exit(1);
+				exit(errno);
 			}
 			// TODO: use strncat instead of strcat with a NONCE_LENGHT const
 			strcat(message, token[0]);
@@ -458,7 +450,7 @@ int main (int argc, char *argv[])
 			char *sha1_m = (char *) calloc(20, sizeof(char));
 			if (sha1_m == NULL){
 				perror("Unable to allocate memory for sha1_m");
-				exit(1);
+				exit(errno);
 			}
 			SHA1((u_char *)message, strlen(message), (u_char*)sha1_m); 
 
@@ -466,7 +458,7 @@ int main (int argc, char *argv[])
 			char *signature = (char *) calloc(RSA_size(sign) + 1, 1);
 			if (signature == NULL){
 				perror("Unable to allocate memory for signature");
-				exit(1);
+				exit(errno);
 			}
 			u_int siglen;
 			siglen = RSA_size(sign);
@@ -476,15 +468,15 @@ int main (int argc, char *argv[])
 				     (u_char *)signature,
 				     &siglen,
 				     sign) != 1){
-				perror("Error signing the message");
-				exit(1);
+                                ERR_print_errors();
+                                exit(SIBYL_OPENSSL_ERROR);
 			}
 
 			/* encode the signature to base-64 */
 			char *signature_b64 = (char *)calloc(RSA_size(sign) * 4,1);
                         if(signature_b64 == NULL){
                                 perror("Unable to allocate memory for signature_b64");
-                                exit(1);
+                                exit(errno);
                         }
 			b64_ntop((u_char *)signature,
 				 RSA_size(sign),
@@ -501,7 +493,7 @@ int main (int argc, char *argv[])
 						   strlen(signature_b64), sizeof(char));
 			if (response == NULL){
 				perror("Unable to allocate memory for response");
-				exit(1);
+				exit(errno);
 			}
 			strcat(response, message);
 			strcat(response, ";");
@@ -514,7 +506,7 @@ int main (int argc, char *argv[])
 			/* Send response */
 			if (send(newsock, response, strlen(response), 0) == -1){
 				perror("send response");
-				exit(1);
+				exit(errno);
 			}
 
 			/* Close socket */

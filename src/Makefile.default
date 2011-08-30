@@ -30,3 +30,6 @@ pam_exec:
 
 sign:
 	@cd keys; $(MAKE) $(MFLAGS)
+
+clean:
+	find . \( -iname "*.o" -or -iname "*~" -or -iname "sibyl_srv" \) -exec rm -f '{}' \;
