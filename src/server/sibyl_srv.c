@@ -20,6 +20,7 @@
 #include <openssl/rand.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
+#include <openssl/err.h>
 
 #include "sibyl.h"
 
@@ -347,7 +348,7 @@ int main (int argc, char *argv[])
 						    RSA_PKCS1_OAEP_PADDING);
 
 			if (rsa_d == -1){
-                                ERR_print_errors();
+                                ERR_print_errors_fp(stderr);
 				exit(SIBYL_OPENSSL_ERROR);
 			}
 
@@ -377,7 +378,7 @@ int main (int argc, char *argv[])
 						    RSA_PKCS1_OAEP_PADDING);
 
 			if (rsa_d == -1){
-                                ERR_print_errors();
+                                ERR_print_errors_fp(stderr);
 				exit(SIBYL_OPENSSL_ERROR);
 			}
 
@@ -468,7 +469,7 @@ int main (int argc, char *argv[])
 				     (u_char *)signature,
 				     &siglen,
 				     sign) != 1){
-                                ERR_print_errors();
+                                ERR_print_errors_fp(stderr);
                                 exit(SIBYL_OPENSSL_ERROR);
 			}
 
