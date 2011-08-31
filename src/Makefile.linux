@@ -23,6 +23,9 @@ pam_sibyl: libs
 pam_exec: libs
 	@cd client && $(MAKE) $(MFLAGS) pam_exec
 
+debug: MFLAGS += DEBUG='-DDEBUG -g'
+debug: default
+
 sign:
 	@cd keys && $(MAKE) $(MFLAGS)
 
@@ -33,4 +36,4 @@ clean:
 	@cd lib ; $(MAKE) clean
 	@cd client ; $(MAKE) clean
 	@cd server ; $(MAKE) clean
-
+	

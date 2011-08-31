@@ -6,7 +6,6 @@ export INC  = -I/Developer/SDKs/MacOSX10.6.sdk/usr/include/
 export LIBDIR = /Developer/SDKs/MacOSX10.6.sdk/usr/lib
 
 default: pam_sibyl
-#pam_exec pam_sibyl
 
 # should be a loop, but does not work on OS X
 keys: sign
@@ -22,6 +21,9 @@ pam_sibyl: libs
 pam_exec: libs
 	@cd client && $(MAKE) $(MFLAGS) pam_exec
 
+debug: MFLAGS += DEBUG='-DDEBUG -g'
+debug: pam_sibyl
+
 sign:
 	@cd keys && $(MAKE) $(MFLAGS)
 
@@ -32,4 +34,5 @@ clean:
 	@cd lib ; $(MAKE) clean
 	@cd client ; $(MAKE) clean
 	@cd server ; $(MAKE) clean
+	@find . \( -iname "*.o" -or -iname "*~" -or -iname "sibyl_srv" \) -exec rm -f '{}' \;
 

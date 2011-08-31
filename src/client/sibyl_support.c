@@ -599,7 +599,7 @@ int _sibyl_dialogue(pam_handle_t *pamh,
 		if((bytes_rcvd = recv(sock, ans + count_bytes, ans_length - count_bytes, 0)) <= 0){
 			syslog(LOG_NOTICE, "Connection error with the Sibyl, "
 			       "received [%i] bytes through [%i], and till now "
-			       "the answer was [%s]", bytes_rdcvd+count_bytes, sock, ans);
+			       "the answer was [%s]", bytes_rcvd+count_bytes, sock, ans);
 			return(PAM_SYSTEM_ERR);
 		}
 		if((count_bytes += bytes_rcvd) > ans_length){
