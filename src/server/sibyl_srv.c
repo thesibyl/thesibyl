@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <limits.h>
 #include <sys/time.h>
+#include <syslog.h>
 
 #include <netinet/in.h>
 #include <netdb.h>
@@ -120,10 +121,8 @@ int main (int argc, char *argv[])
 	fclose(decr_f);
 	fclose(sign_f);
 
-/* all these should be D(...) as in sibyl.h: please fix */
-#ifdef DEBUG
-        printf("Private keys read\n");
-#endif
+        D("Private keys read");
+
 	/* Start listening */
 	if ((status = getaddrinfo(NULL, SIBYL_PORT, &hints, &srvinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
@@ -175,9 +174,7 @@ int main (int argc, char *argv[])
 		exit(errno);
 	}
 
-#ifdef DEBUG
-	printf("Waiting for connections...\n");
-#endif
+        D("Waiting for connections...\n");
 
 	while(1){
 		sin_size = sizeof client_addr;
@@ -268,10 +265,7 @@ int main (int argc, char *argv[])
 				}
 			}
 
-// no need to log all the messages, I reckon
-#ifdef DEBUG
-			printf("Received: [%s]\n", msg);
-#endif
+                        D1("Received: [%s]\n", msg);
 
 			/* parse message, which is as follows: 
 			 * m;p1;p2\n@@\n
@@ -319,11 +313,10 @@ int main (int argc, char *argv[])
 				exit(SIBYL_MALFORMED_MSG);
 			}
 
-#ifdef DEBUG
-			printf("m : %s\n", token[0]);
-			printf("p1 : %s\n", token[1]);
-			printf("p2 : %s\n", token[2]);
-#endif
+			D1("m : %s\n", token[0]);
+			D1("p1 : %s\n", token[1]);
+			D1("p2 : %s\n", token[2]);
+
 			/* decrypt p1 (p1 = token[1]) */
 			int rsa_d;
 			char *p1_rsa = (char *)calloc(RSA_size(decrypt) + 1, 1);
@@ -352,9 +345,8 @@ int main (int argc, char *argv[])
 				exit(SIBYL_OPENSSL_ERROR);
 			}
 
-#ifdef DEBUG
-			printf("p1_data: %s\n", p1_data);
-#endif
+			D1("p1_data: %s\n", p1_data);
+
 			/* decrypt p2 (p2 = token[2]) */
 			char *p2_rsa = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
                         if(p2_rsa == NULL){
@@ -382,9 +374,7 @@ int main (int argc, char *argv[])
 				exit(SIBYL_OPENSSL_ERROR);
 			}
 
-#ifdef DEBUG
-			printf("p2_data: %s\n", p2_data);
-#endif
+			D1("p2_data: %s\n", p2_data);
 
 			/* Calculates v1, that is: p2_data = n:v1 */
 			char *p2_token[2];
@@ -401,10 +391,8 @@ int main (int argc, char *argv[])
 				exit(SIBYL_MALFORMED_MSG);
 			}
 
-#ifdef DEBUG
-			printf("nonce: %s\n", p2_token[0]);
-			printf("v1: %s\n", p2_token[1]);
-#endif
+			D1("nonce: %s\n", p2_token[0]);
+			D1("v1: %s\n", p2_token[1]);
 
 			/* Is the password correct? */
 			char *auth_result = calloc(1, sizeof(char));
@@ -484,9 +472,7 @@ int main (int argc, char *argv[])
 				 signature_b64,
 				 RSA_size(sign) * 4);
 
-#ifdef DEBUG
-			printf("signature_b64: %s\n", signature_b64);
-#endif
+			D1("signature_b64: %s\n", signature_b64);
 
 			/* creates the response string */
 			char *response;
@@ -499,10 +485,9 @@ int main (int argc, char *argv[])
 			strcat(response, message);
 			strcat(response, ";");
 			strcat(response, signature_b64);
+                        strcat(response, "@");
 
-#ifdef DEBUG
-			printf("response: %s\n", response);
-#endif
+			D1("response: %s\n", response);
 
 			/* Send response */
 			if (send(newsock, response, strlen(response), 0) == -1){
