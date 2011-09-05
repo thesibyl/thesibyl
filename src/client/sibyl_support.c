@@ -878,10 +878,10 @@ int fwritepwent(FILE *pwd_file,
 }
 
 
-/* fgetpwent for Apple systems... lack it. man getpwent but from a
+/* fgetpwent for non-linux systems... lack it. man getpwent but from a
  *   specified file descriptor (which must be already open)
  */
-#ifdef __APPLE__
+#ifndef __linux__ 
 struct passwd *fgetpwent(FILE *pwd_file){
         struct passwd *entity = (struct passwd *) calloc(1, sizeof(struct passwd));
         if(entity == NULL)

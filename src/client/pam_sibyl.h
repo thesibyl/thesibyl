@@ -150,7 +150,7 @@ int fwritepwent(FILE * pwd_file,
                 char * new_shadow_token, 
                 char * salt);
 
-#ifdef __APPLE__
+#ifndef __linux__
 struct passwd *fgetpwent(FILE *pwd_file);
 #endif
           
