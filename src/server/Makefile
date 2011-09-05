@@ -1,17 +1,24 @@
-include ../Makefile.inc
-LIBDIR = "../lib"
-LIBS = -lcrypto -lcrypt
+# put common definitions in here
+CC	  = gcc
+CFLAGS    = -Wall # -DDEBUG -g
+INC       = -I../lib # will be in other dirs
+LD	  = ld
+LDFLAGS   = 
+LIBS      = -lcrypt -lcrypto
+LIBDIR    = "../lib"
+SIBYL   = 1
+# .SILENT :
 
 default: srv
 
 libs:
 	cd ../lib && $(MAKE) $(MFLAGS)
 
-debug: CFLAGS += -DDEBUG -g
-
 srv: libs
-	@echo generando sibyl_srv 
-	$(CC) $(INC) -g sibyl_srv.c -o sibyl_srv $(LIBDIR)/bsd-base64.o $(LIBS)
+	$(CC) $(CFLAGS) $(INC) sibyl_srv.c -o sibyl_srv $(LIBDIR)/bsd-base64.o $(LIBS)
+
+debug: libs
+	$(CC) $(CFLAGS) -DDEBUG -g $(INC) sibyl_srv.c -o sibyl_srv $(LIBDIR)/bsd-base64.o $(LIBS)  
 
 clean:
 	@find . \( -iname "*.o" -or -iname "*~" -or -iname "sibyl_srv" \) -exec rm -f '{}' \;
