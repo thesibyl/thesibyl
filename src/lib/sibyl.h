@@ -81,11 +81,12 @@ static char password_prompt[] = "Password:";
 
 
 /* server error messages */
+#define SIBYL_SUCCESS       0
 #define SIBYL_RECV_ERROR    10000
 #define SIBYL_NASTY_CLIENT  10001
 #define SIBYL_MALFORMED_MSG 10002
 #define SIBYL_OPENSSL_ERROR 10003
-
+#define SIBYL_KEYS_ERROR    10004
 
 /* convenience */
 #define MAX(a,b) ((a) >= (b)) ? (a) : (b)
@@ -99,7 +100,4 @@ static char password_prompt[] = "Password:";
 #define D(x) /**/
 #define D1(x,y) /**/
 #endif
-
-
-
 

@@ -27,6 +27,7 @@
 
 #include "bsd-base64.h"
 
+#define DEBUG
 
 void sigchld_handler(int s)
 {
@@ -42,6 +43,71 @@ void *get_in_addr(struct sockaddr *sa)
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+int read_keys(RSA **decrypt, RSA **sign){
+
+	/* RSA private keys */
+	char *decr_fname, *sign_fname;
+	decr_fname = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
+	sign_fname = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
+	if(decr_fname == NULL || sign_fname == NULL){
+		perror("decr_fname or sign_fname alloc");
+		return(errno);
+	}
+
+	if(strlen(SIBYL_DIR) >= _POSIX_PATH_MAX ||
+	   FILE_LEN >= _POSIX_PATH_MAX ||
+	   (strlen(SIBYL_DIR) + 1 + FILE_LEN) >= _POSIX_PATH_MAX){
+		perror("dir length");
+		return(errno);
+	}
+
+        snprintf(decr_fname, _POSIX_PATH_MAX, "%s/%s", SIBYL_DIR, SIBYL_DECR_KEY);
+        snprintf(sign_fname, _POSIX_PATH_MAX, "%s/%s", SIBYL_DIR, SIBYL_SIGN_KEY);
+
+	/* Fetch the private keys */
+	FILE *decr_f, *sign_f;
+	if((decr_f = fopen(decr_fname, "r")) == NULL){
+		perror("Unable to open file decr_f");
+		return(errno);
+	}
+	if((sign_f = fopen(sign_fname, "r")) == NULL){
+		perror("Unable to open file sign_f");
+		return(errno);
+	}
+
+	/* RSA *decrypt *sign */
+	if((*decrypt = RSA_new()) == NULL){
+		perror("Unable to RSA_new() decrypt");
+		return(errno);
+	}
+	if((*sign = RSA_new()) == NULL){
+		perror("Unable to RSA_new() sign");
+		return(errno);
+	}
+
+	/* Read the private keys */
+	PEM_read_RSAPrivateKey(decr_f, decrypt, NULL, NULL);
+	PEM_read_RSAPrivateKey(sign_f, sign, NULL, NULL);
+
+	if((*decrypt)->n == NULL){
+		perror("Error reading the RSA decrypt key");
+		fclose(decr_f);
+		fclose(sign_f);
+		return(errno);
+	}
+	if((*sign)->n == NULL){
+		perror("Error reading the RSA sign key");
+		fclose(decr_f);
+		fclose(sign_f);
+		return(errno);
+	}
+	fclose(decr_f);
+	fclose(sign_f);
+
+	return(SIBYL_SUCCESS);
+
+}
+
 int main (int argc, char *argv[])
 {
 	int status, sock, newsock;
@@ -51,76 +117,19 @@ int main (int argc, char *argv[])
 	struct sigaction sa;
 	int yes = 1;
 	char s[INET6_ADDRSTRLEN];
+	RSA *decrypt, *sign;
+	int result;
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	/* RSA private keys */
-	char *decr_fname, *sign_fname;
-	decr_fname = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
-	sign_fname = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
-	if(decr_fname == NULL || sign_fname == NULL){
-		perror("decr_fname or sign_fname alloc");
-		exit(errno);
+	result = read_keys(&decrypt, &sign);
+	if(result != SIBYL_SUCCESS){
+		D("Error reading keys");
+		exit(SIBYL_KEYS_ERROR);
 	}
-
-	if(strlen(SIBYL_DIR) >= _POSIX_PATH_MAX ||
-	   FILE_LEN >= _POSIX_PATH_MAX ||
-	   (strlen(SIBYL_DIR) + 1 + FILE_LEN) >= _POSIX_PATH_MAX){
-		perror("dir length");
-		exit(errno);
-	}
-
-	// TODO: names should be configurable
-        snprintf(decr_fname, _POSIX_PATH_MAX, "%s/%s", SIBYL_DIR, SIBYL_DECR_KEY);
-        snprintf(sign_fname, _POSIX_PATH_MAX, "%s/%s", SIBYL_DIR, SIBYL_SIGN_KEY);
-
-	/* Fetch the private keys */
-	FILE *decr_f, *sign_f;
-	if((decr_f = fopen(decr_fname, "r")) == NULL){
-		perror("Unable to open file decr_f");
-		exit(errno);
-	}
-	if((sign_f = fopen(sign_fname, "r")) == NULL){
-		perror("Unable to open file sign_f");
-		exit(errno);
-	}
-
-	/* RSA *decrypt *sign */
-	RSA *decrypt, *sign;
-	decrypt = (RSA *) calloc(1, sizeof(RSA));
-	sign = (RSA *) calloc(1, sizeof(RSA));
-	if((decrypt = RSA_new()) == NULL){
-		perror("Unable to RSA_new() decrypt");
-		exit(errno);
-	}
-	if((sign = RSA_new()) == NULL){
-		perror("Unable to RSA_new() sign");
-		exit(errno);
-	}
-
-
-	/* Read the private keys */
-	PEM_read_RSAPrivateKey(decr_f, &decrypt, NULL, NULL);
-	PEM_read_RSAPrivateKey(sign_f, &sign, NULL, NULL);
-
-	if(decrypt->n == NULL){
-		perror("Error reading the RSA decrypt key");
-		fclose(decr_f);
-		fclose(sign_f);
-		exit(errno);
-	}
-	if(sign->n == NULL){
-		perror("Error reading the RSA sign key");
-		fclose(decr_f);
-		fclose(sign_f);
-		exit(errno);
-	}
-	fclose(decr_f);
-	fclose(sign_f);
-
         D("Private keys read");
 
 	/* Start listening */
@@ -192,7 +201,6 @@ int main (int argc, char *argv[])
 			close(sock); // child doesn't need the listener
 
 			// seed some bytes into the PRNG
-                        // I copied this from somewhere, do you know the reference?
 			FILE *rand_f;
 			int seed;
 			struct timeval tv;
@@ -251,10 +259,7 @@ int main (int argc, char *argv[])
 				 (*(msg+(count_bytes-4)) == '\n'))){
 				if((bytes_rcvd = recv(newsock, msg + count_bytes,
 						      SIBYL_MAX_MSG - count_bytes, 0)) <= 0){
-					printf("Connection error with the client. "
-					       "received [%i] bytes through [%i], and "
-					       "till now the message was [%s]",
-					       bytes_rcvd, newsock, msg);
+					perror("Connection error with the client.");
 					exit(SIBYL_RECV_ERROR);
 				}
 				if((count_bytes += bytes_rcvd) > SIBYL_MAX_MSG){
