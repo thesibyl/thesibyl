@@ -15,7 +15,8 @@ libs:
 	cd ../lib && $(MAKE) $(MFLAGS)
 
 srv: libs
-	$(CC) $(CFLAGS) $(INC) sibyl_srv.c -o sibyl_srv $(LIBDIR)/bsd-base64.o $(LIBS)
+	$(CC) $(CFLAGS) $(INC) -fPIC -c sibyl_srv_support.c -o sibyl_srv_support.o 
+	$(CC) $(CFLAGS) $(INC) sibyl_srv.c -o sibyl_srv sibyl_srv_support.o $(LIBDIR)/bsd-base64.o $(LIBS)
 
 debug: libs
 	$(CC) $(CFLAGS) -DDEBUG -g $(INC) sibyl_srv.c -o sibyl_srv $(LIBDIR)/bsd-base64.o $(LIBS)  
