@@ -273,6 +273,31 @@ int receive_msg(char **msg,
 	return(SIBYL_SUCCESS);
 }
 
+int decrypt_token(char **p1_data,
+	          char *token,
+	          RSA *decrypt){
+	int rsa_d;
+	char *p1_rsa = (char *)calloc(RSA_size(decrypt) + 1, 1);
+	if(p1_rsa == NULL){
+		perror("Unable to allocate memory for token_rsa");
+		exit(errno);
+	}
+	b64_pton(token,
+		 (u_char *)p1_rsa,
+		 RSA_size(decrypt) + 1);
+	rsa_d = RSA_private_decrypt(RSA_size(decrypt),
+				    (u_char *)p1_rsa,
+				    (u_char *)*p1_data,
+				    decrypt,
+				    RSA_PKCS1_OAEP_PADDING);
+	if (rsa_d == -1){
+		ERR_print_errors_fp(stderr);
+		exit(SIBYL_OPENSSL_ERROR);
+	}
+
+	return(SIBYL_SUCCESS);
+}
+
 int main (int argc, char *argv[])
 {
 	int sock, newsock;
@@ -283,7 +308,8 @@ int main (int argc, char *argv[])
 	int result;
 
 	/* Read private keys */
-	result = read_keys(&decrypt, &sign);
+	result = read_keys(&decrypt,
+			   &sign);
 	if(result != SIBYL_SUCCESS){
 		D("Error reading keys");
 		exit(SIBYL_KEYS_ERROR);
@@ -361,61 +387,34 @@ int main (int argc, char *argv[])
 			D1("p1 : %s\n", token[1]);
 			D1("p2 : %s\n", token[2]);
 
-			/* decrypt p1 (p1 = token[1]) */
-			int rsa_d;
-			char *p1_rsa = (char *)calloc(RSA_size(decrypt) + 1, 1);
-                        if(p1_rsa == NULL){
-                                perror("Unable to allocate memory for p1_rsa");
-                                exit(errno);
-                        }
-			b64_pton(token[1],
-				 (u_char *)p1_rsa,
-				 RSA_size(decrypt) + 1);
-
+			/* Decrypt p1 (p1 = token[1]) */
 			char *p1_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
                         if(p1_data == NULL){
                                 perror("Unable to allocate memory for p1_data");
                                 exit(errno);
                         }
-
-			rsa_d = RSA_private_decrypt(RSA_size(decrypt),
-						    (u_char *)p1_rsa,
-						    (u_char *)p1_data,
-						    decrypt,
-						    RSA_PKCS1_OAEP_PADDING);
-
-			if (rsa_d == -1){
-                                ERR_print_errors_fp(stderr);
-				exit(SIBYL_OPENSSL_ERROR);
+			result = decrypt_token(&p1_data,
+					       token[1],
+					       decrypt);
+			if (result != SIBYL_SUCCESS){
+				D("Error decrypting p1");
+				exit (result);
 			}
 
 			D1("p1_data: %s\n", p1_data);
 
-			/* decrypt p2 (p2 = token[2]) */
-			char *p2_rsa = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
-                        if(p2_rsa == NULL){
-                                perror("Unable to allocate memory for p2_rsa");
-                                exit(errno);
-                        }
-			b64_pton(token[2],
-				 (u_char *)p2_rsa,
-				 RSA_size(decrypt) + 1);
-
+			/* Decrypt p2 (p2 = token[2]) */
 			char *p2_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
                         if(p2_data == NULL){
                                 perror("Unable to allocate memory for p2_data");
                                 exit(errno);
                         }
-
-			rsa_d = RSA_private_decrypt(RSA_size(decrypt),
-						    (u_char *)p2_rsa,
-						    (u_char *)p2_data,
-						    decrypt,
-						    RSA_PKCS1_OAEP_PADDING);
-
-			if (rsa_d == -1){
-                                ERR_print_errors_fp(stderr);
-				exit(SIBYL_OPENSSL_ERROR);
+			result = decrypt_token(&p2_data,
+					       token[2],
+					       decrypt);
+			if (result != SIBYL_SUCCESS){
+				D("Error decrypting p2");
+				exit(result);
 			}
 
 			D1("p2_data: %s\n", p2_data);
