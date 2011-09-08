@@ -273,26 +273,155 @@ int receive_msg(char **msg,
 	return(SIBYL_SUCCESS);
 }
 
-int decrypt_token(char **p1_data,
+int decrypt_token(char *p1_data,
 	          char *token,
 	          RSA *decrypt){
 	int rsa_d;
 	char *p1_rsa = (char *)calloc(RSA_size(decrypt) + 1, 1);
 	if(p1_rsa == NULL){
-		perror("Unable to allocate memory for token_rsa");
-		exit(errno);
+		D("Unable to allocate memory for token_rsa");
+		return(errno);
 	}
 	b64_pton(token,
 		 (u_char *)p1_rsa,
 		 RSA_size(decrypt) + 1);
 	rsa_d = RSA_private_decrypt(RSA_size(decrypt),
 				    (u_char *)p1_rsa,
-				    (u_char *)*p1_data,
+				    (u_char *)p1_data,
 				    decrypt,
 				    RSA_PKCS1_OAEP_PADDING);
 	if (rsa_d == -1){
 		ERR_print_errors_fp(stderr);
 		exit(SIBYL_OPENSSL_ERROR);
+	}
+
+	return(SIBYL_SUCCESS);
+}
+
+int is_pwd_ok(char *p1_data,
+	      char *p2_data,
+	      char **auth_result,
+	      char *strnonce){
+
+	/* Calculates v1, that is: p2_data = n:v1 */
+	char *p2_token[2];
+	/* p2_token[0] = nonce */
+	p2_token[0] = strsep(&p2_data, ":");
+	if(p2_token[0] == NULL){
+		D("Malformed p2_data");
+		return(SIBYL_MALFORMED_MSG);
+	}
+	/* p2_token[1] = v1 */
+	p2_token[1] = strsep(&p2_data, ":");
+	if(p2_token[1] == NULL){
+		D("Malformed p2_data");
+		return(SIBYL_MALFORMED_MSG);
+	}
+
+	D1("nonce: %s\n", p2_token[0]);
+	D1("v1: %s\n", p2_token[1]);
+
+	/* Is the password correct? */
+	if((strcmp(p1_data, p2_token[1]) == 0) && 
+	   (strcmp(strnonce, p2_token[0]) == 0)){
+		*auth_result = "1";
+		D("auth ok");
+		printf("auth ok\n");
+	} else {
+		*auth_result = "0";
+		D("auth NOok");
+		printf("auth NOok\n");
+	}
+
+	return(SIBYL_SUCCESS);
+}
+
+int send_response(int *sock,
+		  char *token[3],
+		  char *auth_result,
+		  RSA *sign){
+	/* Create the response, which is as follows:
+ 	 * M;signature
+ 	 * where M is a message (text without semicolons)
+ 	 * 	M has the following structure:
+ 	 * 	M = n:X
+ 	 * 	where
+ 	 * 	n is the nonce received from the client before
+ 	 * 	X is either '0' or '1', for 'Not authenticated' or 'Authenticated'
+ 	 * signature is the RSA signature of M
+ 	 * 	actually (b64_encode(signature))
+ 	 *
+ 	 * */
+	char *message;
+	message = (char *) calloc(strlen(token[0]) + 1 + 
+				  strlen(auth_result), sizeof(char));
+	if (message == NULL){
+		D("Unable to allocate memory for message");
+		return(errno);
+	}
+	// TODO: use strncat instead of strcat with a NONCE_LENGHT const
+	strcat(message, token[0]);
+	strcat(message, ":");
+	strcat(message, auth_result);
+
+	printf("message: %s\n", message);
+
+	/* computes the SHA-1 message digest (20 bytes) */
+	char *sha1_m = (char *) calloc(20, sizeof(char));
+	if (sha1_m == NULL){
+		D("Unable to allocate memory for sha1_m");
+		return(errno);
+	}
+	SHA1((u_char *)message, strlen(message), (u_char*)sha1_m); 
+
+	/* sign the message digest */
+	char *signature = (char *) calloc(RSA_size(sign) + 1, 1);
+	if (signature == NULL){
+		D("Unable to allocate memory for signature");
+		return(errno);
+	}
+	u_int siglen;
+	siglen = RSA_size(sign);
+	if (RSA_sign(NID_sha1,
+		     (u_char *)sha1_m,
+		     20,
+		     (u_char *)signature,
+		     &siglen,
+		     sign) != 1){
+		ERR_print_errors_fp(stderr);
+ 		return(SIBYL_OPENSSL_ERROR);
+	}
+	
+	/* encode the signature to base-64 */
+	char *signature_b64 = (char *)calloc(RSA_size(sign) * 4,1);
+	if(signature_b64 == NULL){
+		D("Unable to allocate memory for signature_b64");
+		return(errno);
+	}
+	b64_ntop((u_char *)signature,
+		 RSA_size(sign),
+		 signature_b64,
+		 RSA_size(sign) * 4);
+	D1("signature_b64: %s\n", signature_b64);
+	/* creates the response string */
+	char *response;
+	response = (char *) calloc(strlen(message) + 1 +
+				   strlen(signature_b64), sizeof(char));
+	if (response == NULL){
+		D("Unable to allocate memory for response");
+		return(errno);
+	}
+	strcat(response, message);
+	strcat(response, ";");
+	strcat(response, signature_b64);
+	strcat(response, "@");
+
+	D1("response: %s\n", response);
+
+	/* Send response */
+	if (send(*sock, response, strlen(response), 0) == -1){
+		D("Error sending response");
+		return(errno);
 	}
 
 	return(SIBYL_SUCCESS);
@@ -393,7 +522,7 @@ int main (int argc, char *argv[])
                                 perror("Unable to allocate memory for p1_data");
                                 exit(errno);
                         }
-			result = decrypt_token(&p1_data,
+			result = decrypt_token(p1_data,
 					       token[1],
 					       decrypt);
 			if (result != SIBYL_SUCCESS){
@@ -409,7 +538,7 @@ int main (int argc, char *argv[])
                                 perror("Unable to allocate memory for p2_data");
                                 exit(errno);
                         }
-			result = decrypt_token(&p2_data,
+			result = decrypt_token(p2_data,
 					       token[2],
 					       decrypt);
 			if (result != SIBYL_SUCCESS){
@@ -419,123 +548,31 @@ int main (int argc, char *argv[])
 
 			D1("p2_data: %s\n", p2_data);
 
-			/* Calculates v1, that is: p2_data = n:v1 */
-			char *p2_token[2];
-			/* p2_token[0] = nonce */
-			p2_token[0] = strsep(&p2_data, ":");
-			if(p2_token[0] == NULL){
-				perror("Malformed p2_data");
-				exit(SIBYL_MALFORMED_MSG);
-			}
-			/* p2_token[1] = v1 */
-			p2_token[1] = strsep(&p2_data, ":");
-			if(p2_token[1] == NULL){
-				perror("Malformed p2_data");
-				exit(SIBYL_MALFORMED_MSG);
-			}
 
-			D1("nonce: %s\n", p2_token[0]);
-			D1("v1: %s\n", p2_token[1]);
-
-			/* Is the password correct? */
+			/* Is the password correct */
 			char *auth_result = calloc(1, sizeof(char));
-                        if(auth_result == NULL){
-                                perror("Unable to allocate memory for auth_result");
-                                exit(errno);
-                        }
-			if((strcmp(p1_data, p2_token[1]) == 0) && 
-			   (strcmp(strnonce, p2_token[0]) == 0)){
-				auth_result = "1";
-				printf("auth ok\n");
-			} else {
-				auth_result = "0";
-				printf("auth NOok\n");
-			}
-
-			/* Create the response, which is as follows:
- 			 * M;signature
- 			 * where M is a message (text without semicolons)
- 			 * 	M has the following structure:
- 			 * 	M = n:X
- 			 * 	where
- 			 * 	n is the nonce received from the client before
- 			 * 	X is either '0' or '1', for 'Not authenticated' or 'Authenticated'
- 			 * signature is the RSA signature of M
- 			 * 	actually (b64_encode(signature))
- 			 *
- 			 * */
-			char *message;
-			message = (char *) calloc(strlen(token[0]) + 1 + 
-						  strlen(auth_result), sizeof(char));
-			if (message == NULL){
-				perror("Unable to allocate memory for message");
+			if(auth_result == NULL){
+				D("Unable to allocate memory for auth_result");
 				exit(errno);
 			}
-			// TODO: use strncat instead of strcat with a NONCE_LENGHT const
-			strcat(message, token[0]);
-			strcat(message, ":");
-			strcat(message, auth_result);
-
-			printf("message: %s\n", message);
-
-			/* computes the SHA-1 message digest (20 bytes) */
-			char *sha1_m = (char *) calloc(20, sizeof(char));
-			if (sha1_m == NULL){
-				perror("Unable to allocate memory for sha1_m");
-				exit(errno);
-			}
-			SHA1((u_char *)message, strlen(message), (u_char*)sha1_m); 
-
-			/* sign the message digest */
-			char *signature = (char *) calloc(RSA_size(sign) + 1, 1);
-			if (signature == NULL){
-				perror("Unable to allocate memory for signature");
-				exit(errno);
-			}
-			u_int siglen;
-			siglen = RSA_size(sign);
-			if (RSA_sign(NID_sha1,
-				     (u_char *)sha1_m,
-				     20,
-				     (u_char *)signature,
-				     &siglen,
-				     sign) != 1){
-                                ERR_print_errors_fp(stderr);
-                                exit(SIBYL_OPENSSL_ERROR);
+			result = is_pwd_ok(p1_data,
+					   p2_data,
+					   &auth_result,
+					   strnonce);
+			if (result != SIBYL_SUCCESS){
+				D("Error checking is the password is OK");
+				exit(result);
 			}
 
-			/* encode the signature to base-64 */
-			char *signature_b64 = (char *)calloc(RSA_size(sign) * 4,1);
-                        if(signature_b64 == NULL){
-                                perror("Unable to allocate memory for signature_b64");
-                                exit(errno);
-                        }
-			b64_ntop((u_char *)signature,
-				 RSA_size(sign),
-				 signature_b64,
-				 RSA_size(sign) * 4);
+			/* Send the response to the client */
 
-			D1("signature_b64: %s\n", signature_b64);
-
-			/* creates the response string */
-			char *response;
-			response = (char *) calloc(strlen(message) + 1 +
-						   strlen(signature_b64), sizeof(char));
-			if (response == NULL){
-				perror("Unable to allocate memory for response");
-				exit(errno);
-			}
-			strcat(response, message);
-			strcat(response, ";");
-			strcat(response, signature_b64);
-                        strcat(response, "@");
-
-			D1("response: %s\n", response);
-
-			/* Send response */
-			if (send(newsock, response, strlen(response), 0) == -1){
-				perror("send response");
-				exit(errno);
+			result = send_response(&newsock,
+					       token,
+					       auth_result,
+					       sign);
+			if (result != SIBYL_SUCCESS){
+				D("Error sending the response");
+				exit(result);
 			}
 
 			/* Close socket */
