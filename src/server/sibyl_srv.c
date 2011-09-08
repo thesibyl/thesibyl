@@ -108,53 +108,39 @@ int read_keys(RSA **decrypt, RSA **sign){
 
 }
 
-int main (int argc, char *argv[])
-{
-	int status, sock, newsock;
+int start_server(int *sock){
 	struct addrinfo hints, *srvinfo, *p;
-	struct sockaddr_storage client_addr;
-	socklen_t sin_size;
-	struct sigaction sa;
+	int status; 
 	int yes = 1;
-	char s[INET6_ADDRSTRLEN];
-	RSA *decrypt, *sign;
-	int result;
+	struct sigaction sa;
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	result = read_keys(&decrypt, &sign);
-	if(result != SIBYL_SUCCESS){
-		D("Error reading keys");
-		exit(SIBYL_KEYS_ERROR);
-	}
-        D("Private keys read");
-
 	/* Start listening */
 	if ((status = getaddrinfo(NULL, SIBYL_PORT, &hints, &srvinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-                // return status?
-		return 1;
+		return(-1);
 	}
 
 	// loop through all the results and bind to the first we can
 	for(p = srvinfo; p != NULL; p = p->ai_next){
-		if ((sock = socket(p->ai_family, p->ai_socktype,
+		if ((*sock = socket(p->ai_family, p->ai_socktype,
 				p->ai_protocol)) == -1) {
 			perror("server: socket");
 			continue;
 		}
 
-		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes,
+		if (setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &yes,
 				sizeof(int)) == -1){
 			perror("server: setsockopt");
 			continue;
 		}
 
-  	if (bind(sock, p->ai_addr, p->ai_addrlen) == -1) {
-			close(sock);
+  	if (bind(*sock, p->ai_addr, p->ai_addrlen) == -1) {
+			close((int)*sock);
 			perror("server: bind");
 			continue;
 		}
@@ -164,15 +150,14 @@ int main (int argc, char *argv[])
 
 	if (p == NULL) {
 		fprintf(stderr, "server: failed to bind\n");
-                //return 2? should be a macro, should it not?
-		return 2;
+		return(-1);
 	}
 
 	freeaddrinfo(srvinfo);
 
-	if (listen(sock, SIBYL_BACKLOG) == -1) {
+	if (listen(*sock, SIBYL_BACKLOG) == -1) {
 		perror("listen");
-		exit(errno);
+		return(errno);
 	}
 
 	sa.sa_handler = sigchld_handler; // reap all dead processes
@@ -180,10 +165,37 @@ int main (int argc, char *argv[])
 	sa.sa_flags = SA_RESTART;
 	if (sigaction(SIGCHLD, &sa, NULL) == -1){
 		perror("sigaction");
-		exit(errno);
+		return(errno);
 	}
 
-        D("Waiting for connections...\n");
+	return (SIBYL_SUCCESS);
+
+}
+
+int main (int argc, char *argv[])
+{
+	int sock, newsock;
+	struct sockaddr_storage client_addr;
+	socklen_t sin_size;
+	char s[INET6_ADDRSTRLEN];
+	RSA *decrypt, *sign;
+	int result;
+
+	/* Read keys */
+	result = read_keys(&decrypt, &sign);
+	if(result != SIBYL_SUCCESS){
+		D("Error reading keys");
+		exit(SIBYL_KEYS_ERROR);
+	}
+        D("Private keys read");
+
+	/* Start server */
+	result = start_server(&sock);
+	if(result != SIBYL_SUCCESS){
+		D("Error starting server");
+		exit(SIBYL_LISTEN_ERROR);
+	}
+        D("Server started\n");
 
 	while(1){
 		sin_size = sizeof client_addr;
