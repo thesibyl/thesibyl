@@ -105,7 +105,6 @@ int read_keys(RSA **decrypt, RSA **sign){
 	fclose(sign_f);
 
 	return(SIBYL_SUCCESS);
-
 }
 
 int start_server(int *sock){
@@ -169,7 +168,34 @@ int start_server(int *sock){
 	}
 
 	return (SIBYL_SUCCESS);
+}
 
+int send_nonce(int *sock, char **strnonce){
+	u_char nonce[9];
+	int count;
+
+	// generate a random nonce.
+        // this may need to be larger than 8 bytes
+	if (*strnonce == NULL){
+		perror("strnonce calloc");
+		return(errno);
+	}
+	RAND_bytes(nonce, 8);
+	for(count = 0; count < 8; count++)
+		sprintf((*strnonce)+count*2, "%02X", nonce[count]);			
+	// send the nonce
+	if (send(*sock, *strnonce, 17, 0) == -1){
+		perror("send strnonce");
+		return(errno);
+	}
+
+	// the nonce ends in '@'
+	if (send(*sock, "@", 1, 0) == -1){
+		perror("send '@'");
+		return(errno);
+	}
+
+	return(SIBYL_SUCCESS);
 }
 
 int main (int argc, char *argv[])
@@ -198,6 +224,7 @@ int main (int argc, char *argv[])
         D("Server started\n");
 
 	while(1){
+		/* Accept connection */
 		sin_size = sizeof client_addr;
 		newsock = accept(sock, (struct sockaddr *)&client_addr, &sin_size);
 		if (newsock == -1){
@@ -229,29 +256,13 @@ int main (int argc, char *argv[])
 			}
 			RAND_seed((const void *)&seed, sizeof(seed));
 
-			// generate a random nonce.
-                        // this may need to be larger than 8 bytes
-			u_char nonce[9];
-			int count;
+			/* Send the nonce */
 			char *strnonce;
 			strnonce = (char *) calloc(17, sizeof(char));
-			if (strnonce == NULL){
-				perror("strnonce calloc");
-				exit(errno);
-			}
-			RAND_bytes(nonce, 8);
-			for(count = 0; count < 8; count++)
-				sprintf(strnonce+count*2, "%02X", nonce[count]);			
-			// send the nonce
-			if (send(newsock, strnonce, 17, 0) == -1){
-				perror("send strnonce");
-				exit(errno);
-			}
-
-			// the nonce ends in '@'
-			if (send(newsock, "@", 1, 0) == -1){
-				perror("send '@'");
-				exit(errno);
+			result = send_nonce(&newsock, &strnonce);
+			if (result != SIBYL_SUCCESS){
+				D("Error sending the nonce");
+				exit(SIBYL_NONCE_ERROR);
 			}
 
 			/* receive the client's message */
