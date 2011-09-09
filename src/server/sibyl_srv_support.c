@@ -49,7 +49,10 @@ void sigchld_handler(int s)
  *
  */
 int read_keys(RSA **decrypt,
-	      RSA **sign){
+	      char *decr_filename,
+	      RSA **sign,
+	      char *sign_filename,
+	      char *dir){
 
 	/* RSA private keys */
 	char *decr_fname, *sign_fname;
@@ -67,8 +70,8 @@ int read_keys(RSA **decrypt,
 		return(SIBYL_KEYS_ERROR);
 	}
 
-        snprintf(decr_fname, _POSIX_PATH_MAX, "%s/%s", SIBYL_DIR, SIBYL_DECR_KEY);
-        snprintf(sign_fname, _POSIX_PATH_MAX, "%s/%s", SIBYL_DIR, SIBYL_SIGN_KEY);
+        snprintf(decr_fname, _POSIX_PATH_MAX, "%s/%s", dir, decr_filename);
+        snprintf(sign_fname, _POSIX_PATH_MAX, "%s/%s", dir, sign_filename);
 
 	/* Fetch the private keys */
 	FILE *decr_f, *sign_f;
@@ -127,7 +130,9 @@ int read_keys(RSA **decrypt,
  *   The *sock variable is filled with the appropriate content
  *
  */
-int start_server(int *sock){
+int start_server(int *sock,
+		 char *ip,
+		 char *port){
 	struct addrinfo hints, *srvinfo, *p;
 	int status; 
 	int yes = 1;
@@ -138,7 +143,7 @@ int start_server(int *sock){
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	if ((status = getaddrinfo(NULL, SIBYL_PORT, &hints, &srvinfo)) != 0) {
+	if ((status = getaddrinfo(NULL, port, &hints, &srvinfo)) != 0) {
 		D1("Error: getaddrinfo  %s\n", gai_strerror(status));
 		return(SIBYL_LISTEN_ERROR);
 	}

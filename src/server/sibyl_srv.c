@@ -40,9 +40,50 @@ int main (int argc, char *argv[])
 	RSA *decrypt, *sign;
 	int result;
 
+	/* Default values */
+	char *dir = SIBYL_DIR;
+	char *decr_namefile = SIBYL_DECR_KEY;
+	char *sign_namefile = SIBYL_SIGN_KEY;
+	char *ip = NULL;
+	char *port = SIBYL_PORT;
+
+	/* Read options */
+	int c;
+	while((c = getopt(argc, argv, SIBYL_SRV_OPTS)) != -1){
+		switch(c){
+			case 'd':
+				decr_namefile = optarg;
+				break;
+			case 's':
+				sign_namefile = optarg;
+				break;
+			case 'p':
+				port = optarg;
+				break;
+			case 'i':
+				ip = optarg;
+				break;
+			case 'D':
+				dir = optarg;
+				break;
+			default:
+				printf("Usage: %s -d decrypt -s sign -i IP -p port -D dir\n"
+				       "  -d decrypt: decrypt private key (default: decrypt)\n"
+				       "  -s sign: sign private key (default: sign)\n"
+				       "  -i IP: IP where the server will listen (default: localhost)\n"
+				       "  -p port: port where the server will listen (default: 9999)\n"
+				       "  -D dir: directory where the private keys are stored "
+				       "(default: /etc/sibyl)\n", argv[0]);
+				exit(1);
+		}
+	}
+
 	/* Read private keys */
 	result = read_keys(&decrypt,
-			   &sign);
+			   decr_namefile,
+			   &sign,
+			   sign_namefile,
+			   dir);
 	if(result != SIBYL_SUCCESS){
 		D("Error reading keys");
 		exit(SIBYL_KEYS_ERROR);
@@ -50,7 +91,9 @@ int main (int argc, char *argv[])
         D("Private keys read");
 
 	/* Start server */
-	result = start_server(&sock);
+	result = start_server(&sock,
+			      ip,
+			      port);
 	if(result != SIBYL_SUCCESS){
 		D("Error starting server");
 		exit(SIBYL_LISTEN_ERROR);
