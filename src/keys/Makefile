@@ -6,13 +6,13 @@ nopass: sign-nopass sign.pub decrypt-nopass decrypt.pub
 
 sign:
 	@echo generating key files: sign, sign.pub, decrypt, decrypt.pub
-	@openssl genrsa -out sing.tmp -aes256 $(NUM_BITS) 
-	@mv sing.tmp sign
+	@openssl genrsa -out sign.tmp -aes256 $(NUM_BITS) 
+	@mv sign.tmp sign
 
 sign-nopass:
 	@echo generating key files: sign, sign.pub, decrypt, decrypt.pub
-	@openssl genrsa -out sing.tmp $(NUM_BITS) 
-	@mv sing.tmp sign
+	@openssl genrsa -out sign.tmp $(NUM_BITS) 
+	@mv sign.tmp sign
 
 sign.pub: sign
 	@openssl rsa -pubout -in sign > sign.pub.tmp
