@@ -484,10 +484,9 @@ int send_response(int *sock,
 		D("Error: Unable to allocate memory for message");
 		return(errno);
 	}
-	// TODO: use strncat instead of strcat with a NONCE_LENGHT const
-	strcat(message, token[0]);
-	strcat(message, ":");
-	strcat(message, auth_result);
+	strncat(message, token[0], SIBYL_NONCE_LENGTH-1);
+	strncat(message, ":", 1);
+	strncat(message, auth_result, 1);
 
 	printf("message: %s\n", message);
 
