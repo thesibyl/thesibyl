@@ -12,6 +12,7 @@
 #include <limits.h>
 #include <sys/time.h>
 #include <syslog.h>
+#include <termios.h>
 
 #include <netinet/in.h>
 #include <netdb.h>
@@ -27,11 +28,47 @@
 #include "bsd-base64.h"
 #include "sibyl_srv_support.h"
 
-#define DEBUG
-
 void sigchld_handler(int s)
 {
 	while(waitpid(-1, NULL, WNOHANG) > 0);
+}
+
+/*
+ * Pass phrase callback
+ */
+int pass_cb( char *buf, int size, int rwflag, void *u )
+{
+	int len;
+	char pass[PASSPHRASE_MAX_LENGTH];
+	struct termios oflags, nflags;
+
+	/* Disabling echo */
+	tcgetattr(fileno(stdin), &oflags);
+	nflags = oflags;
+	nflags.c_lflag &= ~ECHO;
+	nflags.c_lflag |= ECHONL;
+
+	if (tcsetattr(fileno(stdin), TCSANOW, &nflags) != 0) {
+		D("Error: Disabling echo (tcsetattr)");
+		return(-1);
+	}
+
+	printf( "Enter PEM pass phrase for '%s': ", (char*)u );
+	scanf( "%s", pass );
+
+	/* Restore terminal */
+	if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0) {
+		D("Error: Restoring echo (tcsetattr)");
+		return(-1);
+	}
+
+	len = strlen( pass );
+	if ( len <= 0 ) return(0);
+	if ( len > size ) len = size;
+	memset( buf, '\0', size );
+	memcpy( buf, pass, len );
+
+	return(len);
 }
 
 /* read_keys: 
@@ -95,8 +132,9 @@ int read_keys(RSA **decrypt,
 	}
 
 	/* Read the private keys */
-	PEM_read_RSAPrivateKey(decr_f, decrypt, NULL, NULL);
-	PEM_read_RSAPrivateKey(sign_f, sign, NULL, NULL);
+	OpenSSL_add_all_algorithms();
+	PEM_read_RSAPrivateKey(decr_f, decrypt, pass_cb, "decrypt");
+	PEM_read_RSAPrivateKey(sign_f, sign, pass_cb, "sign");
 
 	if((*decrypt)->n == NULL){
 		D("Error reading the RSA decrypt key");

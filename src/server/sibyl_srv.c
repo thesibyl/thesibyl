@@ -20,8 +20,6 @@
 #include "sibyl.h"
 #include "sibyl_srv_support.h"
 
-#define DEBUG
-
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {

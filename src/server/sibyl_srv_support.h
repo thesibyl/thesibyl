@@ -7,6 +7,8 @@
  */
 #define SIBYL_SRV_OPTS "d:s:i:p:D:"
 
+#define PASSPHRASE_MAX_LENGTH 1024
+
 int read_keys(RSA **decrypt,
 	      char *decr_filename,
 	      RSA **sign,
