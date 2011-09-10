@@ -72,7 +72,8 @@ int main (int argc, char *argv[])
 				       "  -i IP: IP where the server will listen (default: localhost)\n"
 				       "  -p port: port where the server will listen (default: 9999)\n"
 				       "  -D dir: directory where the private keys are stored "
-				       "(default: /etc/sibyl)\n", argv[0]);
+				       "(default: /etc/sibyl)\n"
+				       "  -h: shows this help text\n", argv[0]);
 				exit(1);
 		}
 	}
