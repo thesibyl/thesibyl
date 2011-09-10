@@ -5,7 +5,7 @@
  * -p port    -> port where the server will listen (default: 9999)
  * -D dir     -> directory where the private keys are stored
  */
-#define SIBYL_SRV_OPTS "d:s:i:p:D:"
+#define SIBYL_SRV_OPTS "d:s:i:p:D:h"
 
 #define PASSPHRASE_MAX_LENGTH 1024
 
