@@ -64,6 +64,7 @@ int main (int argc, char *argv[])
 			case 'D':
 				dir = optarg;
 				break;
+			case 'h':
 			default:
 				printf("Usage: %s -d decrypt -s sign -i IP -p port -D dir\n"
 				       "  -d decrypt: decrypt private key (default: decrypt)\n"
