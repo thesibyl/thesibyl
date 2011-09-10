@@ -19,7 +19,8 @@ srv: libs
 	$(CC) $(CFLAGS) $(INC) sibyl_srv.c -o sibyl_srv sibyl_srv_support.o $(LIBDIR)/bsd-base64.o $(LIBS)
 
 debug: libs
-	$(CC) $(CFLAGS) -DDEBUG -g $(INC) sibyl_srv.c -o sibyl_srv $(LIBDIR)/bsd-base64.o $(LIBS)  
+	$(CC) $(CFLAGS) -DDEBUG -g $(INC) -fPIC -c sibyl_srv_support.c -o sibyl_srv_support.o
+	$(CC) $(CFLAGS) -DDEBUG -g $(INC) sibyl_srv.c -o sibyl_srv sibyl_srv_support.o $(LIBDIR)/bsd-base64.o $(LIBS)
 
 clean:
 	@find . \( -iname "*.o" -or -iname "*~" -or -iname "sibyl_srv" \) -exec rm -f '{}' \;
