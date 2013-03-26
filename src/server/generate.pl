@@ -1,6 +1,6 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
-
+use warnings;
 use Crypt::OpenSSL::Random;
 use Crypt::OpenSSL::RSA;
 use File::Slurp;

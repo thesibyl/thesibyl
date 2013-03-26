@@ -1,5 +1,6 @@
-#!/usr/bin/perl -W
+#!/usr/bin/env perl
 use strict;
+use warnings;
 use threads;
 use threads::shared;
 use Crypt::OpenSSL::RSA;
