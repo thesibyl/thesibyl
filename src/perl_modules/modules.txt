@@ -1,0 +1,4 @@
+Perl modules used in the perl server and client:
+- Crypt-OpenSSL-Random-0.04
+- Crypt-OpenSSL-RSA-0.26
+- File-Slurp-9999.13
