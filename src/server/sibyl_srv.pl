@@ -113,7 +113,7 @@ while ($client = $server->accept()) {
   alarm 5;
   # 0x40 -> MSG_WAITALL
   while (defined recv($client, $msg, 65535, 0)) {
-    print stderr $msg;
+    print STDERR $msg;
     if ($msg =~ /\@\@.*$/) {
       $msg =~ s/\@\@.*$//;
       $received .= $msg;
@@ -132,7 +132,7 @@ while ($client = $server->accept()) {
   alarm 0;
 
     $received =~ s/\n//gm;
-    print stderr "received: [$received]\n";
+    print STDERR "received: [$received]\n";
   # ID; base64 1st message; base64 2nd message
   my @message = split(/;/, $received);
   do {
@@ -146,19 +146,19 @@ while ($client = $server->accept()) {
 
   my $id = shift @message;
 
-  my @plain = map {print stderr "$_\n" ; $decr_key->decrypt(decode_base64($_))} @message;
+  my @plain = map {print STDERR "$_\n" ; $decr_key->decrypt(decode_base64($_))} @message;
 
 
   # $plain[1] contains the nonce
-  print stderr "plan[1]: [$plain[1]]\n plain[0]: [$plain[0]]\n";
+  print STDERR "plan[1]: [$plain[1]]\n plain[0]: [$plain[0]]\n";
   $plain[1] =~ /^(.*?):(.*)$/;
   my $nonce_back = $1;
   $plain[1] = $2;
 
   # debugging purposes
   #select stdout;
-  print stderr "plain0: [$plain[0]]\n";
-  print stderr "Nonce: [$nonce_back], plain: [$plain[1]]\n";
+  print STDERR "plain0: [$plain[0]]\n";
+  print STDERR "Nonce: [$nonce_back], plain: [$plain[1]]\n";
   #select $client;
 
   my ($ret, $sgn);
@@ -173,7 +173,7 @@ while ($client = $server->accept()) {
     $sgn =~ s/\n//g;
     send($client, join(';',($ret, $sgn)) . "\@", 0);
   }
-  print stderr "Sent [$ret;$sgn]\@\n";
+  print STDERR "Sent [$ret;$sgn]\@\n";
   close($client);
   exit 1;
 }
