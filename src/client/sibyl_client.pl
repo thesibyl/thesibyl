@@ -9,6 +9,8 @@ use IO::Socket;
 use lib qw{lib /etc/sibyl ../lib};
 use sibyl;
 
+my $DEBUG=1;
+
 # our $DECR_KEY;
 # our $SIGN_KEY;
 # our $SERVER;
@@ -89,13 +91,18 @@ my $verify_key = Crypt::OpenSSL::RSA->new_public_key($verify_f) or
 my $socket = IO::Socket::INET->new("$sibyl::SERVER:$sibyl::PORT") or 
   die "Unable to contact server: $!";
 
+print "Connected to $sibyl::SERVER:$sibyl::PORT\n" if $DEBUG;
+
 my $nonce;
 recv($socket, $nonce, 1024, 0);
 $nonce =~ /\A([.0-9A-Za-z]+)/;
 $nonce = $1;
+print "nonce received: $nonce\n" if $DEBUG;
 
 # this is an undercover 'case' statement...
 DIGEST_CASES: {
+
+   print "digest: $sibyl::DIGEST\n" if $DEBUG;
 
   "crypt" eq $sibyl::DIGEST && do {
     # notice that the crypt function is essentially different on
@@ -104,11 +111,13 @@ DIGEST_CASES: {
     $message[1] =~ /^(.*)\$([^\$]+)\Z/;
     my $salt = "$1\$";
     my $pass = $2;
+    print "m2: $message[1]\n" if $DEBUG;
+    print "m2 -> salt: $salt hash: $pass\n" if $DEBUG;
 
     $message[1] = crypt $pass, "$salt";
+    
     last DIGEST_CASES;
   };
-
 
   "none" eq $sibyl::DIGEST && do {
     # 'none' means 'no need to digest the second message', but it
@@ -119,8 +128,11 @@ DIGEST_CASES: {
   };
 
 };
+print "base64(encrypt($nonce:$message[1]):\n" if $DEBUG;
 $message[1] = encode_base64($encr_key->encrypt("$nonce:$message[1]"));
-
+print "---\n";
+print "$message[1]" if $DEBUG;
+print "---\n";
 
 unshift @message, rand();
 
@@ -133,6 +145,7 @@ print "\n\@\@\n";
 my $ans = <$socket>;
 
 select $stdout;
+print "received: $ans\n" if $DEBUG;
 
 my @part = split /;/, $ans;
 my $decr = $verify_key->verify($part[0], decode_base64($part[1]));
@@ -142,7 +155,6 @@ if ($decr) {
   print "Signed by a felon\n";
   exit $sibyl::FELON;
 }
-
 
 my @retval = split /:/, $part[0];
 my $success = $retval[1];
@@ -154,6 +166,5 @@ if ($success && $retval[0] eq $message[0]) {
   print "You have not been authenticated\n";
   exit $sibyl::MISAUTH;
 }
-
 
 exit 0;
