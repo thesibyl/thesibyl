@@ -78,6 +78,9 @@ $message[0] ||= <stdin>;
 $message[1] ||= <stdin>;
 chomp $message[1]; # just in case
 
+print "m1: $message[0]\n" if $DEBUG;
+print "m2: $message[1]\n" if $DEBUG;
+
 my $encr_f = read_file("$sibyl::DECR_KEY.pub") or
   die "Unable to read file: $!";
 my $verify_f = read_file("$sibyl::SIGN_KEY.pub") or 
@@ -128,13 +131,13 @@ DIGEST_CASES: {
   };
 
 };
-print "base64(encrypt($nonce:$message[1]):\n" if $DEBUG;
+print "base64(encrypt($nonce:$message[1]): " if $DEBUG;
 $message[1] = encode_base64($encr_key->encrypt("$nonce:$message[1]"));
-print "---\n";
-print "$message[1]" if $DEBUG;
-print "---\n";
+print "$message[1]\n";
 
 unshift @message, rand();
+print "client nonce: $message[0]\n" if $DEBUG;
+print "message: " . join(';',@message) . "\n" if $DEBUG;
 
 my $stdout = select;
 select $socket;
