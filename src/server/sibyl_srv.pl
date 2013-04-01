@@ -11,6 +11,8 @@ use lib qw{lib /etc/sibyl ../lib};
 
 use sibyl;
 
+my $DEBUG=1;
+
 # command-line arguments: -d:s:i:p:D:
 ARG:
 while (local $_ = shift @ARGV) {
@@ -60,8 +62,10 @@ foreach ($sibyl::DECR_KEY, $sibyl::SIGN_KEY) {
 
 my $decr_key = Crypt::OpenSSL::RSA->new_private_key($b64[0]) or
   die "Not a private RSA key: $!";
+print "Read decrypt private key\n" if $DEBUG;
 my $sign_key = Crypt::OpenSSL::RSA->new_private_key($b64[1]) or
   die "Not a private RSA key: $!";
+print "Read sign private key\n" if $DEBUG;
 
 my $server = IO::Socket::INET->new(
 				   LocalPort    => $sibyl::PORT,
@@ -72,7 +76,7 @@ my $server = IO::Socket::INET->new(
                                    Timeout      => undef,
 				  ) or
   die "Unable to create and bind socket:$!";
-
+print "Listening on $sibyl::IP:$sibyl::PORT\n" if $DEBUG;
 
 # prevent zombies
 $SIG{CHLD} = 'IGNORE';
@@ -82,6 +86,8 @@ my $client;
 my $kidpid;
 REQUEST:
 while ($client = $server->accept()) {
+  print "Accepted connection from " . $client->peerhost() . ":" . $client->peerport() . "\n" if $DEBUG;
+
   if ($kidpid = fork) { # parent process, just accept another connection
     close $client;
     next REQUEST;
@@ -94,7 +100,6 @@ while ($client = $server->accept()) {
 
   $client->timeout(5);
 
-
   # and do some work afterwards
   my $nonce;
   my $msg;
@@ -103,17 +108,18 @@ while ($client = $server->accept()) {
 
   # send a nonce. For now, a random number is enough
   $nonce = rand();
+  
   select $client;
   print $nonce . "\@";
 
   # get the complete message: ID; base641; base642 (supposedly);
   # everything adds up to less than 64k
-  my $file;
-  open($file, "+>/var/log/sibyl");
+  #my $file;
+  #open($file, "+>/var/log/sibyl");
   alarm 5;
   # 0x40 -> MSG_WAITALL
   while (defined recv($client, $msg, 65535, 0)) {
-    print stderr $msg;
+    print STDERR "$msg\n" if $DEBUG;
     if ($msg =~ /\@\@.*$/) {
       $msg =~ s/\@\@.*$//;
       $received .= $msg;
@@ -131,8 +137,8 @@ while ($client = $server->accept()) {
   }
   alarm 0;
 
-    $received =~ s/\n//gm;
-    print stderr "received: [$received]\n";
+  $received =~ s/\n//gm;
+  print STDERR "received: [$received]\n" if $DEBUG;
   # ID; base64 1st message; base64 2nd message
   my @message = split(/;/, $received);
   do {
@@ -142,23 +148,19 @@ while ($client = $server->accept()) {
     exit $sibyl::MALFORMED_MESSAGE;
   } unless (scalar @message == 3);
 
-
-
   my $id = shift @message;
 
-  my @plain = map {print stderr "$_\n" ; $decr_key->decrypt(decode_base64($_))} @message;
-
+  my @plain = map {print STDERR "decrypting...\n$_\n" if $DEBUG; $decr_key->decrypt(decode_base64($_))} @message;
 
   # $plain[1] contains the nonce
-  print stderr "plan[1]: [$plain[1]]\n plain[0]: [$plain[0]]\n";
+  print STDERR "plain[1]: [$plain[1]]\n plain[0]: [$plain[0]]\n" if $DEBUG;
   $plain[1] =~ /^(.*?):(.*)$/;
   my $nonce_back = $1;
   $plain[1] = $2;
 
-  # debugging purposes
   #select stdout;
-  print stderr "plain0: [$plain[0]]\n";
-  print stderr "Nonce: [$nonce_back], plain: [$plain[1]]\n";
+  print STDERR "plain0: [$plain[0]]\n" if $DEBUG;
+  print STDERR "nonce: [$nonce_back], plain: [$plain[1]]\n" if $DEBUG;
   #select $client;
 
   my ($ret, $sgn);
@@ -173,7 +175,7 @@ while ($client = $server->accept()) {
     $sgn =~ s/\n//g;
     send($client, join(';',($ret, $sgn)) . "\@", 0);
   }
-  print stderr "Sent [$ret;$sgn]\@\n";
+  print STDERR "Sent [$ret;$sgn]\@\n" if $DEBUG;
   close($client);
   exit 1;
 }
