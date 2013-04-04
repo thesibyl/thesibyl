@@ -151,6 +151,8 @@ select $stdout;
 print "received: $ans\n" if $DEBUG;
 
 my @part = split /;/, $ans;
+print "message: $part[0]\n" if $DEBUG;
+print "signature: $part[1]\n" if $DEBUG;
 my $decr = $verify_key->verify($part[0], decode_base64($part[1]));
 if ($decr) {
   print "Verification OK\n";
