@@ -5,6 +5,7 @@ use Crypt::OpenSSL::RSA;
 use MIME::Base64;
 use File::Slurp;
 use IO::Socket;
+use Digest::SHA1 qw(sha1);
 
 use lib qw{lib /etc/sibyl ../lib};
 use sibyl;
@@ -151,9 +152,14 @@ select $stdout;
 print "received: $ans\n" if $DEBUG;
 
 my @part = split /;/, $ans;
-print "message: $part[0]\n" if $DEBUG;
-print "signature: $part[1]\n" if $DEBUG;
-my $decr = $verify_key->verify($part[0], decode_base64($part[1]));
+my $message = $part[0];
+$message =~ s/^@//;
+print "message: $message\n" if $DEBUG;
+my $signature = $part[1];
+$signature =~ s/@//;
+print "signature: $signature\n" if $DEBUG;
+my $sha1_message = sha1($part[0]);
+my $decr = $verify_key->verify($sha1_message, decode_base64($part[1]));
 if ($decr) {
   print "Verification OK\n";
 } else {
