@@ -150,15 +150,15 @@ print "\n\@\@\n";
 my $ans = <$socket>;
 
 select $stdout;
-print "received: $ans\n" if $DEBUG;
+print "received: [$ans]\n";
 
 my @part = split /;/, $ans;
 my $message = $part[0];
-$message =~ s/^@//;
+$part[0] =~ s/^@//;
 print "message: $message\n" if $DEBUG;
 my $signature = $part[1];
-$signature =~ s/@//;
 print "signature: $signature\n" if $DEBUG;
+print "message: [$part[0]]\n";
 
 my $decr = $verify_key->verify($part[0], decode_base64($part[1]));
 if ($decr) {
