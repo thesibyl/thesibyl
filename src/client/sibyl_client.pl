@@ -5,17 +5,11 @@ use Crypt::OpenSSL::RSA;
 use MIME::Base64;
 use File::Slurp;
 use IO::Socket;
-use Digest::SHA1 qw(sha1);
 
 use lib qw{lib /etc/sibyl ../lib};
 use sibyl;
 
 my $DEBUG=1;
-
-# our $DECR_KEY;
-# our $SIGN_KEY;
-# our $SERVER;
-# our $PORT;
 
 my @message;
 
@@ -82,6 +76,7 @@ chomp $message[1]; # just in case
 print "m1: $message[0]\n" if $DEBUG;
 print "m2: $message[1]\n" if $DEBUG;
 
+# Read the decrypt and sign public keys
 my $encr_f = read_file("$sibyl::DECR_KEY.pub") or
   die "Unable to read file: $!";
 my $verify_f = read_file("$sibyl::SIGN_KEY.pub") or 
@@ -92,18 +87,20 @@ my $encr_key = Crypt::OpenSSL::RSA->new_public_key($encr_f) or
 my $verify_key = Crypt::OpenSSL::RSA->new_public_key($verify_f) or
   die "Malformed RSA key: $!";
 
+# Connect to the sibyl
 my $socket = IO::Socket::INET->new("$sibyl::SERVER:$sibyl::PORT") or 
   die "Unable to contact server: $!";
 
 print "Connected to $sibyl::SERVER:$sibyl::PORT\n" if $DEBUG;
 
+# Get the nonce
 my $nonce;
 recv($socket, $nonce, 1024, 0);
 $nonce =~ /\A([.0-9A-Za-z]+)/;
 $nonce = $1;
 print "nonce received: $nonce\n" if $DEBUG;
 
-# this is an undercover 'case' statement...
+# This is an undercover 'case' statement...
 DIGEST_CASES: {
 
    print "digest: $sibyl::DIGEST\n" if $DEBUG;
@@ -132,34 +129,35 @@ DIGEST_CASES: {
   };
 
 };
+
+# Encrypt and encode (base64) 'm2'
 $encr_key->use_pkcs1_oaep_padding();
 print "base64(encrypt($nonce:$message[1]): " if $DEBUG;
 $message[1] = encode_base64($encr_key->encrypt("$nonce:$message[1]"));
 print "$message[1]\n";
 
+# Generate nonce and add it to the message
 unshift @message, rand();
 print "client nonce: $message[0]\n" if $DEBUG;
-print "message: " . join(';',@message) . "\n" if $DEBUG;
 
+# Send message
 my $stdout = select;
 select $socket;
-
 print join(';', @message);
 print "\n\@\@\n";
 
+# Receive answer
 my $ans = <$socket>;
-
 select $stdout;
+print "message sent: " . join(';',@message) . "\n" if $DEBUG;
 print "received: [$ans]\n";
 
+# answer = message;signature
 my @part = split /;/, $ans;
-my $message = $part[0];
-$part[0] =~ s/^@//;
-print "message: $message\n" if $DEBUG;
-my $signature = $part[1];
-print "signature: $signature\n" if $DEBUG;
 print "message: [$part[0]]\n";
+print "signature: [$part[1]]\n";
 
+# Verify the message
 my $decr = $verify_key->verify($part[0], decode_base64($part[1]));
 if ($decr) {
   print "Verification OK\n";
@@ -168,9 +166,9 @@ if ($decr) {
   exit $sibyl::FELON;
 }
 
+# Check the nonce and the authentication result (0 or 1)
 my @retval = split /:/, $part[0];
 my $success = $retval[1];
-
 if ($success && $retval[0] eq $message[0]) {
   print "Authenticated\n";
   exit 0;
