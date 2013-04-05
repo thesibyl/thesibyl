@@ -132,6 +132,7 @@ DIGEST_CASES: {
   };
 
 };
+$encr_key->use_pkcs1_oaep_padding();
 print "base64(encrypt($nonce:$message[1]): " if $DEBUG;
 $message[1] = encode_base64($encr_key->encrypt("$nonce:$message[1]"));
 print "$message[1]\n";
@@ -158,8 +159,8 @@ print "message: $message\n" if $DEBUG;
 my $signature = $part[1];
 $signature =~ s/@//;
 print "signature: $signature\n" if $DEBUG;
-my $sha1_message = sha1($part[0]);
-my $decr = $verify_key->verify($sha1_message, decode_base64($part[1]));
+
+my $decr = $verify_key->verify($part[0], decode_base64($part[1]));
 if ($decr) {
   print "Verification OK\n";
 } else {
