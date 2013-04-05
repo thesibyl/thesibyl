@@ -286,11 +286,11 @@ int send_nonce(int sock,
 		return(SIBYL_NONCE_ERROR);
 	}
 
-	// the nonce ends in '@'
-	if (send(sock, "@", 1, 0) == -1){
-		D("Error: sending '@'");
-		return(SIBYL_NONCE_ERROR);
-	}
+	// FALSE: the nonce ends in '@'
+	//if (send(sock, "_", 1, 0) == -1){
+	//	D("Error: sending '@'");
+	//	return(SIBYL_NONCE_ERROR);
+	//}
 
 	return(SIBYL_SUCCESS);
 }
