@@ -286,11 +286,11 @@ int send_nonce(int sock,
 		return(SIBYL_NONCE_ERROR);
 	}
 
-	// FALSE: the nonce ends in '@'
-	//if (send(sock, "_", 1, 0) == -1){
-	//	D("Error: sending '@'");
-	//	return(SIBYL_NONCE_ERROR);
-	//}
+	//FALSE: the nonce ends in '@'
+	if (send(sock, "@", 1, 0) == -1){
+		D("Error: sending '@'");
+		return(SIBYL_NONCE_ERROR);
+	}
 
 	return(SIBYL_SUCCESS);
 }
@@ -573,7 +573,7 @@ int send_response(int *sock,
 	/* creates the response string */
 	char *response;
 	response = (char *) calloc(strlen(message) + 1 +
-				   strlen(signature_b64), sizeof(char));
+				   strlen(signature_b64)+5, sizeof(char));
 	if (response == NULL){
 		D("Error: Unable to allocate memory for response");
 		return(errno);
