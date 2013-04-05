@@ -4,12 +4,11 @@
 \usepackage{amssymb}
 \usepackage{pdfsync}
 \newcommand{\margin}[1]{$^\star$\marginpar{\framebox{\begin{minipage}{3cm}\tiny{\textbf{Fixme:\/}\emph{#1}}\end{minipage}}}}
-\author{P. Fortuny Ayuso}
-\address{Dpto. de Matem\'aticas, Universidad de Oviedo}
-\email{info@pfortuny.net}
+%\author{P. Fortuny Ayuso}
+%\address{Dpto. de Matem\'aticas, Universidad de Oviedo}
+%\email{info@pfortuny.net}
 \date{\today}
-\title[Fighting Rainbow Tables]{An RSA device for fighting
-  password-file theft}
+\title[Phasing out rainbow tables]{The Sibyl: phasing out dictionary attacks and rainbow tables}
 \begin{document}
 \begin{abstract}
   We propose a new authentication scheme which stores passwords in a safe
@@ -158,6 +157,10 @@ In any case, our scenario (which is fairly standard) is a service
 whose password database is at risk but which is able to store the
 private key \emph{safely}.
 
+\section{Implementation}
 
+We present a proof of concept implementation using a dedicated machine
+(a tiny 486 `bifferboard') and/or a virtual machine, using a PAM
+module we have developed for logging in on an \emph{ssh} connection.
 
 \end{document}
