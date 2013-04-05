@@ -158,23 +158,21 @@ while ($client = $server->accept()) {
   my $nonce_back = $1;
   $plain[1] = $2;
 
-  #select stdout;
   print STDERR "plain0: [$plain[0]]\n" if $DEBUG;
   print STDERR "nonce: [$nonce_back], plain: [$plain[1]]\n" if $DEBUG;
-  #select $client;
 
+  # Check if the password is ok (plain[0] == plain[1])
   my ($ret, $sgn);
   if (($plain[0] eq $plain[1]) && ($nonce_back eq $nonce)) {
     $ret = "$id:$sibyl::AUTH_OK";
-    $sgn = encode_base64($sign_key->sign($ret));
-    $sgn =~ s/\n//g;
-    send($client, join(';',($ret,$sgn)) . "\@", 0);
   } else {
     $ret = "$id:$sibyl::AUTH_NO";
-    $sgn = encode_base64($sign_key->sign($ret));
-    $sgn =~ s/\n//g;
-    send($client, join(';',($ret, $sgn)) . "\@", 0);
   }
+
+  # Send response with signature
+  $sgn = encode_base64($sign_key->sign($ret));
+  $sgn =~ s/\n//g;
+  send($client, join(';',($ret,$sgn)) . "\@", 0);
   print STDERR "Sent [$ret;$sgn]\@\n" if $DEBUG;
   close($client);
   exit 1;
