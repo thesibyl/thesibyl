@@ -173,7 +173,7 @@ pair and the signing pair
   3.2. The output of the crypt function will be RSA-encrypted using the decryption
   public key and base64 encoded, that is: base64(RSA_encrypt(crypt(password, salt)))
 
-  # echo "$1$56X0AGPE$AvbQvdvZFPkkJetNItkr91" | \
+  # echo -n "$1$56X0AGPE$AvbQvdvZFPkkJetNItkr91" | \
     openssl rsautl -encrypt -inkey decrypt.pub -pubin | openssl enc -base64
   jlWP/arJwMMLbVwpPZn6k7um8+k00lyfJDX+k7WJzQt/wrvb1Lg7XLdWKVNB5+mT
   1hWah1IX+A4rb4UImHyjKV+L4zLFSiNUbR2YKJCKG7+aOWlYO03fhF5ehuvRVXmW
