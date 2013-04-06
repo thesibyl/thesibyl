@@ -219,7 +219,7 @@ public key and base64 encoded, that is: base64(RSA_encrypt(crypt(password, salt)
 This shall be stored without newlines, though (however we include them in this
 tutorial for clarity).</p>
 <pre>
-  # echo &quot;$1$56X0AGPE$AvbQvdvZFPkkJetNItkr91&quot; | \
+  # echo -n &quot;$1$56X0AGPE$AvbQvdvZFPkkJetNItkr91&quot; | \
     openssl rsautl -encrypt -inkey decrypt.pub -pubin | openssl enc -base64
   jlWP/arJwMMLbVwpPZn6k7um8+k00lyfJDX+k7WJzQt/wrvb1Lg7XLdWKVNB5+mT
   1hWah1IX+A4rb4UImHyjKV+L4zLFSiNUbR2YKJCKG7+aOWlYO03fhF5ehuvRVXmW
