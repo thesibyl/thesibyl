@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use threads;
 use threads::shared;
+use Crypt::OpenSSL::Common;
 use Crypt::OpenSSL::RSA;
 use Crypt::OpenSSL::Random qw/random_pseudo_bytes/;
 use MIME::Base64;

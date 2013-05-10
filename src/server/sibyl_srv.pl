@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use Crypt::OpenSSL::Common;
 use Crypt::OpenSSL::RSA;
 use MIME::Base64;
 use File::Slurp;
