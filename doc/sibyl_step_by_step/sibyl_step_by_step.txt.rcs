@@ -173,8 +173,8 @@ pair and the signing pair
   3.2. The output of the crypt function will be RSA-encrypted using the decryption
   public key and base64 encoded, that is: base64(RSA_encrypt(crypt(password, salt)))
 
-  # echo "$1$56X0AGPE$AvbQvdvZFPkkJetNItkr91" | \
-    openssl rsautl -encrypt -inkey decrypt.pub -pubin | openssl enc -base64
+  # echo -n "$1$56X0AGPE$AvbQvdvZFPkkJetNItkr91" | \
+    openssl rsautl -encrypt -oaep -inkey decrypt.pub -pubin | openssl enc -base64
   jlWP/arJwMMLbVwpPZn6k7um8+k00lyfJDX+k7WJzQt/wrvb1Lg7XLdWKVNB5+mT
   1hWah1IX+A4rb4UImHyjKV+L4zLFSiNUbR2YKJCKG7+aOWlYO03fhF5ehuvRVXmW
   4ouIzEVahn4Jx5rkqqCejdOKJqDftgOArWc+6lwLmPOqHG6Zbn9FaKq9A8OeGrst
@@ -263,7 +263,7 @@ The result will be base64 encoded.
   Compute p2=base64_encode(RSA_encrypt("nonce_sibyl:crypt(password,salt)))
 
   # echo $nonce_sibyl:$pass_crypted | \
-    openssl rsautl -encrypt -inkey decrypt.pub -pubin | \
+    openssl rsautl -encrypt -oaep -inkey decrypt.pub -pubin | \
     openssl enc -base64
   SMzBKPKnaJKtqI7IHFTT3jWJ3OBSew4bNpa0ArzpO/xWrAujUtmKydvRUET8WvOt
   TmSlIupcw6Ivc2Bu54feV63ou8ZOZEYOurMF1BVLJ24lF24xmmHBBOHp94zT0ySy
@@ -291,7 +291,7 @@ Note that this nonce is different from the one received from the Sibyl.
     BleT7MJZ+Oqnbli70tGoQWBeQmMrvnqLejPuqawiwE3ZP5weFWn9vsidp4rY/Qb4
     ij3vRMznuC3ErcaRBiVH+l2g8t26Q0vLPO+cyuF6xvvKtmwxmZYSThQfebJYjuKn
     CArtgl6hrIN9ye26N5o5KA==' | openssl enc -base64 -d | \   
-    openssl rsautl -decrypt -inkey decrypt
+    openssl rsautl -decrypt -oaep -inkey decrypt
   $1$56X0AGPE$AvbQvdvZFPkkJetNItkr91
 
 9. The Sibyl decrypts p2 (=u2)
@@ -302,7 +302,7 @@ Note that this nonce is different from the one received from the Sibyl.
     RntBj5LJk9n5lxVxg8lP/RZXripFrxeGDetVPAfZMsA9glSh5tnTqQO5/8PiCD3b
     oLD1gET9tpOGI/ECXT7nEG/FcK7p8J7gbkXlnY6Unz9jD96FYuz8yl4tFrOUvW87
     WtQxFIHqspvGwAFlnJW4hA==" | \
-    openssl enc -base64 -d | openssl rsautl -decrypt -inkey decrypt
+    openssl enc -base64 -d | openssl rsautl -decrypt -oaep -inkey decrypt
   15509:$1$56X0AGPE$AvbQvdvZFPkkJetNItkr91
 
 10. The Sibyl checks that u2 matches the pattern /^n:(.*)$/ and sets v1=$1.
