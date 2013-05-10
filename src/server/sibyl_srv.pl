@@ -11,9 +11,9 @@ use lib qw{lib /etc/sibyl ../lib};
 
 use sibyl;
 
-my $DEBUG=1;
+my $DEBUG=0;
 
-# command-line arguments: -d:s:i:p:D:
+# command-line arguments: -d:s:i:p:D:-DEBUG
 ARG:
 while (local $_ = shift @ARGV) {
 
@@ -42,9 +42,14 @@ while (local $_ = shift @ARGV) {
     next ARG;
   };
 
+  /^--DEBUG\Z/ && do{
+    $DEBUG = 1;
+    next ARG;
+  };
+
   do {
     print "Usage: -d decryption key -s signing key -i addres to listen on -p port
--D directory\n";
+-D directory [--DEBUG]\n";
     exit 1;
   };
 
@@ -108,7 +113,7 @@ while ($client = $server->accept()) {
 
   # send a nonce. For now, a random number is enough
   $nonce = rand();
-  
+
   select $client;
   print $nonce . "\@";
 
