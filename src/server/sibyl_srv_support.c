@@ -325,10 +325,8 @@ int receive_msg(char **msg,
 
 	/* Receive the client's message */
 	while(count_bytes == 0 || 
-	      !( (*((*msg)+(count_bytes-1)) == '\n') &&
-		 (*((*msg)+(count_bytes-2)) == '@') &&
-		 (*((*msg)+(count_bytes-3)) == '@') &&
-		 (*((*msg)+(count_bytes-4)) == '\n'))){
+	      !( (*((*msg)+(count_bytes-1)) == '@') &&
+		 (*((*msg)+(count_bytes-2)) == '@'))){
 		if((bytes_rcvd = recv(sock, *msg + count_bytes,
 				      SIBYL_MAX_MSG - count_bytes, 0)) <= 0){
 			perror("Connection error with the client.");
