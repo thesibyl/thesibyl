@@ -116,7 +116,6 @@ int main (int argc, char *argv[])
 		if (!fork()){ // child process
 			close(sock); // child doesn't need the listener
 
-
 			/* Send the nonce */
 			char *strnonce;
 			strnonce = (char *) calloc(17, sizeof(char));
@@ -128,7 +127,8 @@ int main (int argc, char *argv[])
 
 			/* Receive the client's message and parse it */
 			char *msg;
-			char *token[3];
+                        char command = 0;
+			char *token[3] = {0,0,0};
 			msg = (char *) calloc(SIBYL_MAX_MSG, sizeof(char));
 			if(msg == NULL){
 				D("Unable to allocate memory for the client's message");
@@ -136,6 +136,7 @@ int main (int argc, char *argv[])
 			}
 			result = receive_msg(&msg,
 					     newsock,
+                                             &command,
 					     token);
 			if (result != SIBYL_SUCCESS){
 				D("Error receiving the client's message");
@@ -143,10 +144,26 @@ int main (int argc, char *argv[])
 			}
 
         		D1("Received: [%s]\n", msg);
+                        D1("command: [%c]\n", command);
 			D1("m : %s\n", token[0]);
 			D1("p1 : %s\n", token[1]);
 			D1("p2 : %s\n", token[2]);
 
+                        /* 
+                         * Now there are several actions depending on the command
+                         * which is stored in command.
+                         */
+
+                        /* Just send the public keys */
+                        if(command == '-'){
+                                result = send_public_keys(dir,
+                                                          decr_namefile,
+                                                          sign_namefile,
+                                                          newsock);
+                                exit(result);
+                        }
+                        
+                        /* Any other command requires decryption of p1 */
 			/* Decrypt p1 (p1 = token[1]) */
 			char *p1_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
                         if(p1_data == NULL){
@@ -154,22 +171,50 @@ int main (int argc, char *argv[])
                                 exit(errno);
                         }
 			result = decrypt_token(p1_data,
+                                               command,
 					       token[1],
 					       decrypt);
 			if (result != SIBYL_SUCCESS){
 				D("Error decrypting p1");
-				exit (result);
+                                exit (result);
 			}
 
 			D1("p1_data: %s\n", p1_data);
 
-			/* Decrypt p2 (p2 = token[2]) */
+                        /* 
+                         * If command != \000 then it is '0' <= command <='9'
+                         * and translation is asked for.
+                         */
+                        FILE *a=fopen("../keys/decrypt1.pub", "r");
+                        RSA *b = RSA_new();
+                        printf("haahha\n");
+                        PEM_read_RSA_PUBKEY(a, &b, NULL, NULL);
+                        printf("helo\n");
+                        fclose(a);
+                        if(command != 0){
+                                result = translate_and_send(p1_data,
+                                                            command,
+                                                            decr_namefile,
+                                                            dir,
+                                                            newsock,
+                                                            sign);
+                                if(result != SIBYL_SUCCESS){
+                                        D("Error while transalting");
+                                }
+                                exit(result);
+                        }
+
+			/* 
+                         * Decrypt p2 (p2 = token[2]):
+                         * only if command == verify
+                         */
 			char *p2_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
                         if(p2_data == NULL){
                                 perror("Unable to allocate memory for p2_data");
                                 exit(errno);
                         }
 			result = decrypt_token(p2_data,
+                                               command,
 					       token[2],
 					       decrypt);
 			if (result != SIBYL_SUCCESS){

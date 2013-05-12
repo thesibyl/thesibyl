@@ -24,9 +24,11 @@ int send_nonce(int sock,
 
 int receive_msg(char **msg,
 		int sock,
+                char *command,
 		char *token[3]);
 
 int decrypt_token(char *p_data,
+                  char key,
 		  char *token,
 		  RSA *decrypt);
 
@@ -39,3 +41,15 @@ int send_response(int *sock,
 		  char *token[3],
 		  char *auth_result,
 		  RSA *sign);
+
+int translate_and_send(char *p1_data,
+                       char version,
+                       char *decr_namefile,
+                       char *dir,
+                       int  sock,
+                       RSA *sign);
+
+int send_public_keys(char *dir,
+                     char *decrypt_fn,
+                     char *sign_fn,
+                     int sock);

@@ -1,1 +1,15 @@
 - Using libevent in sibyl_srv.c
+- New protocol:
+  [C];....
+  Where C is:
+  '-' -> send public keys
+  'a' where '0'<=a<='9'
+      -> transform from default key to 'a' what I am sending
+  ''  -> default operation with default key
+- Keys are named
+  decrypt
+  decrypt0 (both are the same)
+  decryptX (1<=X<=9)
+  sign
+  sign0 (both are the same)
+  signX (1<=X<=9)

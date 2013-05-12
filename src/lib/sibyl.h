@@ -14,7 +14,7 @@
 #define SIBYL_IP_LENGTH   128
 #define SIBYL_NONCE_LENGTH 65 /* much more than needed: 8 bytes */
 
-/* nonce (64) + bs64(128bytes) + bs64(128bytes) + extra (and A LOT MORE) */
+/* header ([...]) (10) + nonce (64) + bs64(128bytes) + bs64(128bytes) + extra (and A LOT MORE) */
 #define SIBYL_MAX_MSG    2120
 
 /* next one should depend on RSA_size()
@@ -22,7 +22,11 @@
  * 1024 is enough for a 512 bytes key
  * that is, 4096 bits..., and more
  */
-#define SIBYL_B64_PWD_LENGTH 1024 
+#define SIBYL_B64_PWD_LENGTH 2048
+/* maximum size (bytes) of a public key
+ * file... 2048 is HUGE.
+ */
+#define SIBYL_MAX_PUB_FSIZE  2048
 
 
 #ifndef PASS_MAX
@@ -96,8 +100,8 @@ static char password_prompt[] = "Password:";
 
 /* debugging */
 #ifdef DEBUG          
-#define D(x) syslog(LOG_NOTICE, (x))
-#define D1(x,y) syslog(LOG_NOTICE, (x),(y))
+#define D(x) printf((x)); /*syslog(LOG_NOTICE, (x))*/
+#define D1(x,y) printf((x),(y)); /*syslog(LOG_NOTICE, (x),(y))*/
 #else
 #define D(x) /**/
 #define D1(x,y) /**/
