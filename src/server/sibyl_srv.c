@@ -119,7 +119,12 @@ int main (int argc, char *argv[])
 			/* Send the nonce */
 			char *strnonce;
 			strnonce = (char *) calloc(17, sizeof(char));
-			result = send_nonce(newsock, &strnonce);
+                        if (strnonce == NULL){
+                                D("Error: strnonce calloc");
+                                return(SIBYL_NONCE_ERROR);
+                        }
+
+			result = send_nonce(newsock, strnonce);
 			if (result != SIBYL_SUCCESS){
 				D("Error sending the nonce");
 				exit(result);
@@ -134,7 +139,7 @@ int main (int argc, char *argv[])
 				D("Unable to allocate memory for the client's message");
 				exit(errno);
 			}
-			result = receive_msg(&msg,
+			result = receive_msg(msg,
 					     newsock,
                                              &command,
 					     token);
@@ -185,13 +190,11 @@ int main (int argc, char *argv[])
                          * If command != \000 then it is '0' <= command <='9'
                          * and translation is asked for.
                          */
-                        FILE *a=fopen("../keys/decrypt1.pub", "r");
-                        RSA *b = RSA_new();
-                        printf("haahha\n");
-                        PEM_read_RSA_PUBKEY(a, &b, NULL, NULL);
-                        printf("helo\n");
-                        fclose(a);
                         if(command != 0){
+                                if(strncmp(strnonce, token[0], strlen(strnonce))){
+                                        D("Wrong nonce");
+                                        exit(SIBYL_NONCE_ERROR);
+                                }
                                 result = translate_and_send(p1_data,
                                                             command,
                                                             decr_namefile,
@@ -232,7 +235,7 @@ int main (int argc, char *argv[])
 			}
 			result = is_pwd_ok(p1_data,
 					   p2_data,
-					   &auth_result,
+					   auth_result,
 					   strnonce);
 			if (result != SIBYL_SUCCESS){
 				D("Error checking is the password is OK");

@@ -20,9 +20,9 @@ int start_server(int *sock,
 		 char *port);
 
 int send_nonce(int sock,
-	       char **strnonce);
+	       char *strnonce);
 
-int receive_msg(char **msg,
+int receive_msg(char *msg,
 		int sock,
                 char *command,
 		char *token[3]);
@@ -34,7 +34,7 @@ int decrypt_token(char *p_data,
 
 int is_pwd_ok(char *p1_data,
 	      char *p2_data,
-	      char **auth_result,
+	      char *auth_result,
 	      char *strnonce);
 
 int send_response(int *sock,
@@ -53,3 +53,7 @@ int send_public_keys(char *dir,
                      char *decrypt_fn,
                      char *sign_fn,
                      int sock);
+
+int sign_msg_and_send(char *msg,
+                      RSA *sign,
+                      int sock);
