@@ -792,6 +792,8 @@ int sign_msg_and_send(char *msg, RSA *sign, int sock){
                 goto FREE;
 	}
 
+        printf("msg: {%s}\n", msg);
+
 	SHA1((u_char *)msg, strlen(msg), (u_char*)sha1_m); 
 
 	u_int siglen;
