@@ -170,11 +170,13 @@ int main (int argc, char *argv[])
                         
                         /* Any other command requires decryption of p1 */
 			/* Decrypt p1 (p1 = token[1]) */
+                        /* p1_data always includes a trailing 0 */
 			char *p1_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
                         if(p1_data == NULL){
                                 perror("Unable to allocate memory for p1_data");
                                 exit(errno);
                         }
+
 			result = decrypt_token(p1_data,
                                                command,
 					       token[1],

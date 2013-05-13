@@ -311,7 +311,6 @@ int send_nonce(int sock,
 	}
 
 FREE:
-        fclose(rand_f);
         return(retval);
 }
 
@@ -452,9 +451,6 @@ int receive_msg(char *msg,
 	}
 
 FREE:
-        free(full_cmd);
-        free(new_msg);
-
 	return(retval);
 }
 
@@ -587,7 +583,7 @@ int send_response(int *sock,
 		  char *token[3],
 		  char *auth_result,
 		  RSA *sign){
-        int result = SIBYL_SUCCESS;
+        int retval = SIBYL_SUCCESS;
 
 	/* Create the response, which is as follows:
  	 * M;signature
@@ -606,7 +602,8 @@ int send_response(int *sock,
 				  strlen(auth_result), sizeof(char));
 	if (message == NULL){
 		D("Error: Unable to allocate memory for message");
-		return(errno);
+                retval = errno;
+                goto FREE;
 	}
 	strncat(message, token[0], SIBYL_NONCE_LENGTH-1);
 	strncat(message, ":", 1);
@@ -614,10 +611,13 @@ int send_response(int *sock,
 
 	printf("message: %s\n", message);
 
-        result = sign_msg_and_send(message, sign, *sock);
+        retval = sign_msg_and_send(message, sign, *sock);
 
-	return(result);
+FREE:
+        free(message);
+	return(retval);
 }
+
 
 int translate_and_send(char *p1_data,
                        char version,
@@ -626,61 +626,84 @@ int translate_and_send(char *p1_data,
                        int  sock,
                        RSA *sign){
 
-        int result = SIBYL_SUCCESS;
+        int retval = SIBYL_SUCCESS;
+        
+        char *public_fname = NULL;
+        FILE *public = NULL;
+        RSA *pub_key = NULL;
+        char *encrypted_p1 = NULL;
+        char *b64_enc_p1   = NULL;
 
-        char *public_fname = (char *)calloc(strlen(decr_namefile)+5, sizeof(char));
+        public_fname = (char *)calloc(strlen(decr_namefile)+5, sizeof(char));
         if(public_fname == NULL){
                 D("Unable to allocate memory for public_fname");
-                return(errno);
+                retval = errno;
+                goto FREE;
         }
 
-        snprintf(public_fname, _POSIX_PATH_MAX, "%s%s%c.pub", dir,decr_namefile, version);
-        printf("Name: [%s]\n", public_fname);
+        snprintf(public_fname, 
+                 _POSIX_PATH_MAX, 
+                 "%s%s%c.pub", 
+                 dir,
+                 decr_namefile, 
+                 version);
 
-        FILE *public = fopen("../keys/decrypt1.pub", "r");
+        public = fopen("../keys/decrypt1.pub", "r");
         if(public == NULL){
                 D1("Unable to open [%s]", public_fname);
-                return(errno);
+                retval = errno;
+                goto FREE;
         }
         
-        RSA *pub_key;
         pub_key = RSA_new();
         if(pub_key == NULL){
                 D("Unable to initialise pub_key");
-                return(SIBYL_KEYS_ERROR);
+                retval = SIBYL_KEYS_ERROR;
+                goto FREE;
         }
         
         PEM_read_RSA_PUBKEY(public, &pub_key, NULL, NULL);
         if(pub_key == NULL){
                 D("Unable to initialise pub_key");
-                return(SIBYL_KEYS_ERROR);
+                retval = SIBYL_KEYS_ERROR;
+                goto FREE;
         }
-        fclose(public);
 
-        printf("Read public key...\n");
-        char *encrypted_p1 = (char *)calloc(SIBYL_CRYPTD_PWD_MAX, sizeof(char));
-        char *b64_enc_p1    = (char *)calloc(SIBYL_CRYPTD_PWD_MAX, sizeof(char));
+        encrypted_p1 = (char *)calloc(SIBYL_CRYPTD_PWD_MAX, sizeof(char));
+        b64_enc_p1    = (char *)calloc(SIBYL_CRYPTD_PWD_MAX, sizeof(char));
         if(encrypted_p1 == NULL ||
            b64_enc_p1   == NULL){
                 D("Unable to allocate memory");
-                return(errno);
+                retval = errno;
+                goto FREE;
         }
 
         /* DANGER: strlen(p1_data!!!) */
-        RSA_public_encrypt(strlen(p1_data),
-                           (unsigned char *)p1_data,
-                           (unsigned char *)encrypted_p1,
-                           pub_key,
-                           RSA_PKCS1_OAEP_PADDING);
-
+        retval = RSA_public_encrypt(strlen(p1_data),
+                                    (unsigned char *)p1_data,
+                                    (unsigned char *)encrypted_p1,
+                                    pub_key,
+                                    RSA_PKCS1_OAEP_PADDING);
+        if(retval < 0){
+                D("Unable to decrypt");
+                goto FREE;
+        }
+        
 	b64_ntop((u_char *)encrypted_p1,
 		 RSA_size(pub_key),
                  b64_enc_p1,
 		 RSA_size(pub_key) * 4);
 
-        result = sign_msg_and_send(b64_enc_p1, sign, sock);
+        retval = sign_msg_and_send(b64_enc_p1, sign, sock);
 
-	return(result);        
+FREE:
+        free(encrypted_p1);
+        free(b64_enc_p1);
+        free(public_fname);
+        RSA_free(pub_key);
+        fclose(public);
+
+	return(retval);        
 }
 
 
@@ -689,8 +712,17 @@ int send_public_keys(char *dir,
                      char *sign_fn,
                      int sock){
 
-        char *decr_path = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
-        char *sign_path = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
+        int retval = SIBYL_SUCCESS;
+        char *decr_path = NULL;
+        char *sign_path = NULL;
+        FILE *d = NULL;
+        FILE *s = NULL;
+
+        int i,j;
+        char buf[512];
+
+        decr_path = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
+        sign_path = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
 	if(decr_path == NULL || sign_path == NULL){
 		D("Error: decr_fname or sign_fname alloc");
 		return(SIBYL_KEYS_ERROR);
@@ -702,16 +734,13 @@ int send_public_keys(char *dir,
         printf("[%s],[%s]\n", decr_path, sign_path);
 
 
-        FILE *d = fopen(decr_path, "r");
-        FILE *s = fopen(sign_path, "r");
+        d = fopen(decr_path, "r");
+        s = fopen(sign_path, "r");
         if(d == NULL || s == NULL){
                 D("Error opening public keys");
                 return(SIBYL_KEYS_ERROR);
         }
 
-        int i = 0;
-        int j = 0;
-        char buf[512];
         FILE *f[2] = {d, s};
         char *n[2] = {decr_fn, sign_fn};
         for(j=0; j<2; j++){
@@ -721,37 +750,50 @@ int send_public_keys(char *dir,
                         i = fread(buf, 1, 512, f[j]);
                         if(i<0){
                                 D("Error reading public files.");
-                                return(errno);
+                                retval = errno;
+                                goto FREE;
                         }
                         if(send(sock, buf, i, 0) == -1){
                                 D("Error sending public files.");
-                                return(errno);
+                                retval = errno;
+                                goto FREE;
                         }
                 }
                 fclose(f[j]);
         }
 
-        return(SIBYL_SUCCESS);
+FREE:
+        fclose(d);
+        fclose(s);
+        free(decr_path);
+        free(sign_path);
+        
+        return(retval);
 }
 
 
 int sign_msg_and_send(char *msg, RSA *sign, int sock){
-        int result = SIBYL_SUCCESS;
+        int retval = SIBYL_SUCCESS;
+
+        char *sha1_m        = NULL;
+        char *signature     = NULL;
+        char *signature_b64 = NULL;
+        char *response      = NULL;
 
 	/* computes the SHA-1 message digest (20 bytes) */
-	char *sha1_m = (char *) calloc(20, sizeof(char));
-	if (sha1_m == NULL){
-		D("Error: Unable to allocate memory for sha1_m");
-		return(errno);
+	sha1_m = (char *)       calloc(20, sizeof(char));
+	signature = (char *)    calloc(RSA_size(sign) + 1, 1);
+	signature_b64 = (char *)calloc(RSA_size(sign) * 4 + 1,1);
+
+	if (sha1_m == NULL || signature == NULL ||
+            signature_b64 == NULL){
+		D("Error: Unable to allocate memory");
+                retval = errno;
+                goto FREE;
 	}
+
 	SHA1((u_char *)msg, strlen(msg), (u_char*)sha1_m); 
 
-	/* sign the message digest */
-	char *signature = (char *) calloc(RSA_size(sign) + 1, 1);
-	if (signature == NULL){
-		D("Error: Unable to allocate memory for signature");
-		return(errno);
-	}
 	u_int siglen;
 	siglen = RSA_size(sign);
 	if (RSA_sign(NID_sha1,
@@ -760,17 +802,12 @@ int sign_msg_and_send(char *msg, RSA *sign, int sock){
 		     (u_char *)signature,
 		     &siglen,
 		     sign) != 1){
-		ERR_print_errors_fp(stderr);
- 		return(SIBYL_OPENSSL_ERROR);
+                D("Error signing");
+                retval = errno;
+                goto FREE;
 	}
 	
 	/* encode the signature to base-64 */
-	char *signature_b64 = (char *)calloc(RSA_size(sign) * 4,1);
-	if(signature_b64 == NULL){
-		D("Error: Unable to allocate memory for signature_b64");
-		return(errno);
-	}
-
 	b64_ntop((u_char *)signature,
 		 RSA_size(sign),
 		 signature_b64,
@@ -778,13 +815,15 @@ int sign_msg_and_send(char *msg, RSA *sign, int sock){
 	D1("signature_b64: %s\n", signature_b64);
 
 	/* creates the response string */
-	char *response;
 	response = (char *) calloc(strlen(msg) + 1 +
 				   strlen(signature_b64)+5, sizeof(char));
 	if (response == NULL){
 		D("Error: Unable to allocate memory for response");
-		return(errno);
+                retval = errno;
+                goto FREE;
 	}
+
+        /* all strings are safe here */
 	strcat(response, msg);
 	strcat(response, ";");
 	strcat(response, signature_b64);
@@ -795,9 +834,14 @@ int sign_msg_and_send(char *msg, RSA *sign, int sock){
 	/* Send response */
 	if (send(sock, response, strlen(response), 0) == -1){
 		D("Error: sending response");
-		return(errno);
+                retval = errno;
+                goto FREE;
 	}
 
-        return(result);
-
+FREE:
+        free(response);
+        free(signature_b64);
+        free(signature);
+        free(sha1_m);
+        return(retval);
 }
