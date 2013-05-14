@@ -345,6 +345,7 @@ int receive_msg(char *msg,
 
         char *full_cmd = NULL;
         char *new_msg  = NULL;
+        char *new_ptr  = NULL;
 
 	/* Receive the client's message */
 	while(count_bytes == 0 || 
@@ -371,8 +372,11 @@ int receive_msg(char *msg,
 		D("Error: Unable to allocate memory for new_msg");
                 goto FREE;
         }
+        new_ptr = new_msg;
 
-	strncpy(new_msg, msg, count_bytes-2);
+	memcpy(new_msg, msg, count_bytes-2);
+        D1("received: {%s}\n", new_msg);
+
 
 	/* parse message, which is as follows: 
 	 * c;m;p1;p2@@
@@ -451,7 +455,7 @@ int receive_msg(char *msg,
 	}
 
 FREE:
-        free(new_msg);
+        free(new_ptr);
 	return(retval);
 }
 

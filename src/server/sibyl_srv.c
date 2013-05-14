@@ -255,6 +255,7 @@ int main (int argc, char *argv[]){
                                 retval = SIBYL_OSERR;
                                 goto ENDCHILD;
                         }
+
 			retval = decrypt_token(p2_data,
                                                command,
 					       token[2],
