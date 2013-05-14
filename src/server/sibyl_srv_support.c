@@ -128,7 +128,7 @@ int read_keys(RSA **decrypt,
 
 	/* Fetch the private keys */
         decr_f = fopen(decr_fname, "r");
-        sign_f = fopen(decr_fname, "r");
+        sign_f = fopen(sign_fname, "r");
         if(decr_f == NULL || sign_f == NULL){
 		D("Error: Unable to open some key file\n");
                 retval = SIBYL_KEYS_ERROR;
