@@ -811,7 +811,7 @@ int sign_msg_and_send(char *msg, RSA *sign, int sock){
 	
 	/* encode the signature to base-64 */
 	b64_ntop((u_char *)signature,
-		 RSA_size(sign),
+		 siglen,
 		 signature_b64,
 		 RSA_size(sign) * 4);
 	D1("signature_b64: %s\n", signature_b64);
