@@ -93,6 +93,7 @@ static char password_prompt[] = "Password:";
 #define SIBYL_KEYS_ERROR    10004
 #define SIBYL_LISTEN_ERROR  10005
 #define SIBYL_NONCE_ERROR   10006
+#define SIBYL_OSERR         10011
 
 /* convenience */
 #define MAX(a,b) ((a) >= (b)) ? (a) : (b)
