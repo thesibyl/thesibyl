@@ -355,13 +355,15 @@ int receive_msg(char *msg,
 		if((bytes_rcvd = recv(sock, &(msg[count_bytes]),
 				      SIBYL_MAX_MSG - count_bytes, 0)) <= 0){
 			perror("Connection error with the client.");
-			return(SIBYL_RECV_ERROR);
+                        retval = SIBYL_OSERR;
+                        goto FREE;
 		}
 		if((count_bytes += bytes_rcvd) > SIBYL_MAX_MSG){
 			perror("Sibyl's client is sending more bytes than"
 			       "necessary");
                         // we exit here because the client is cheating
-			return(SIBYL_NASTY_CLIENT);
+                        retval = SIBYL_NASTY_CLIENT;
+                        goto FREE;
 		}
 	}
 
@@ -369,7 +371,7 @@ int receive_msg(char *msg,
 	new_msg = (char *)calloc(count_bytes-1, sizeof(char));
         if(new_msg == NULL){
 		D("Error: Unable to allocate memory for new_msg");
-		return(errno);
+                goto FREE;
         }
 
 	strncpy(new_msg, msg, count_bytes-2);
@@ -451,6 +453,7 @@ int receive_msg(char *msg,
 	}
 
 FREE:
+        free(new_msg);
 	return(retval);
 }
 
