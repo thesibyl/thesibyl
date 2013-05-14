@@ -478,7 +478,7 @@ int _sibyl_dialogue(pam_handle_t *pamh,
         int bytes_rcvd = 0;
         
 	/* We send the Sibyl the following:
-	 * n;b64_1;b64_2\n@@\n
+	 * [];n;b64_1;b64_2\n@@\n
 	 * where 
 	 * n     is a nonce we generate (usually diferent from 'nonce', the
 	 *       one received from the Sibyl)
@@ -551,7 +551,8 @@ int _sibyl_dialogue(pam_handle_t *pamh,
 
 	/* join with ';' all the strings... */    
 	char *message;
-	message = (char *) calloc(strlen(my_strnonce) + 
+	message = (char *) calloc(5+
+                                  strlen(my_strnonce) + 
 				  strlen(shadow_pwd) +
 				  strlen(b64_pwd) + 
 				  4, sizeof(char));
@@ -560,6 +561,7 @@ int _sibyl_dialogue(pam_handle_t *pamh,
 		syslog(LOG_NOTICE, "Unable to allocate memory for message");
 		return(PAM_SYSTEM_ERR);
 	}
+        strncat(message, "[]", 2);
 	strncat(message, my_strnonce, SIBYL_NONCE_LENGTH-1);
 	strncat(message, ";", 1);
 	strncat(message, shadow_pwd, SIBYL_B64_PWD_LENGTH-1);

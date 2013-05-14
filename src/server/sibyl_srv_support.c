@@ -294,21 +294,19 @@ int send_nonce(int sock,
         // this may need to be larger than 8 bytes
 	RAND_bytes(nonce, 8);
 	for(count = 0; count < 8; count++)
-		sprintf((strnonce)+count*2, "%02X", nonce[count]);			
+		sprintf((strnonce)+count*2, "%02X", nonce[count]);
 
+        strncat(strnonce, "@", 1);
+        
 	// send the nonce
-	if (send(sock, strnonce, 17, 0) == -1){
+	if (send(sock, strnonce, strlen(strnonce), 0) == -1){
 		D("Error: sending strnonce");
                 retval = SIBYL_NONCE_ERROR;
                 goto FREE;
 	}
 
-	// send the trailing '@'
-	if (send(sock, "@", 1, 0) == -1){
-		D("Error: sending '@'");
-                retval = SIBYL_NONCE_ERROR;
-                goto FREE;
-	}
+        // remove trailing @ for comparing
+        strnonce[16]=0;
 
 FREE:
         return(retval);
@@ -612,7 +610,7 @@ int send_response(int *sock,
 	strncat(message, ":", 1);
 	strncat(message, auth_result, 1);
 
-	printf("message: %s\n", message);
+	D1("message: %s\n", message);
 
         retval = sign_msg_and_send(message, sign, *sock);
 
@@ -795,7 +793,7 @@ int sign_msg_and_send(char *msg, RSA *sign, int sock){
                 goto FREE;
 	}
 
-        printf("msg: {%s}\n", msg);
+        D1("msg: {%s}\n", msg);
 
 	SHA1((u_char *)msg, strlen(msg), (u_char*)sha1_m); 
 

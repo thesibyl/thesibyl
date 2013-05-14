@@ -116,7 +116,7 @@ DIGEST_CASES: {
     print "m2 -> salt: $salt hash: $pass\n" if $DEBUG;
 
     $message[1] = crypt $pass, "$salt";
-    
+
     last DIGEST_CASES;
   };
 
@@ -140,11 +140,14 @@ print "$message[1]\n";
 unshift @message, rand();
 print "client nonce: $message[0]\n" if $DEBUG;
 
+# Message is 'ordinary behaviour'
+$message[0] = "[];$message[0]";
+
 # Send message
 my $stdout = select;
 select $socket;
 print join(';', @message);
-print "\n\@\@\n";
+print "\@\@";
 
 # Receive answer
 my $ans = <$socket>;

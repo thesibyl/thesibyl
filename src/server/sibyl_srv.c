@@ -155,7 +155,7 @@ int main (int argc, char *argv[]){
                         char *auth_result = NULL;
 
 			/* Send the nonce */
-			strnonce = (char *) calloc(17, sizeof(char));
+			strnonce = (char *) calloc(32, sizeof(char));
                         if (strnonce == NULL){
                                 D("Malloc");
                                 retval = SIBYL_OSERR;
