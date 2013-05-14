@@ -1,5 +1,5 @@
-/* Sibyl server
- * 
+/* 
+ * Sibyl server
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,48 +21,78 @@
 #include "sibyl_srv_support.h"
 
 // get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
+void *get_in_addr(struct sockaddr *sa){
 	if (sa->sa_family == AF_INET) {
 		return &(((struct sockaddr_in*)sa)->sin_addr);
 	}
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-int main (int argc, char *argv[])
-{
+int main (int argc, char *argv[]){
 	int sock, newsock;
 	struct sockaddr_storage client_addr;
 	socklen_t sin_size;
 	char s[INET6_ADDRSTRLEN];
 	RSA *decrypt, *sign;
-	int result;
+        decrypt = NULL;
+        sign    = NULL;
 
-	/* Default values */
-	char *dir = SIBYL_DIR;
-	char *decr_namefile = SIBYL_DECR_KEY;
-	char *sign_namefile = SIBYL_SIGN_KEY;
-	char *ip = NULL;
-	char *port = SIBYL_PORT;
+	int retval = SIBYL_SUCCESS;
+
+        char *dir  = NULL;
+        char *ip   = NULL;
+        char *port = NULL;
+        char *decr_namefile = NULL;
+        char *sign_namefile = NULL;
+
+        dir  = (char *)calloc(_POSIX_PATH_MAX + 1, sizeof(char));
+        ip   = (char *)calloc(_POSIX_PATH_MAX + 1, sizeof(char));
+        port = (char *)calloc(10, sizeof(char));
+        decr_namefile = (char *)calloc(FILE_LEN + 1, sizeof(char));
+        sign_namefile = (char *)calloc(FILE_LEN + 1, sizeof(char));
+
+        if(dir == NULL || ip == NULL || port == NULL ||
+           decr_namefile == NULL || sign_namefile == NULL){
+                D("Malloc");
+                retval = SIBYL_OSERR;
+                goto FREE;
+        }
+
+        strncpy(dir, SIBYL_DIR, _POSIX_PATH_MAX);
+        strncpy(port, SIBYL_PORT, 9);
+        strncpy(decr_namefile, SIBYL_DECR_KEY, FILE_LEN);
+        strncpy(sign_namefile, SIBYL_SIGN_KEY, FILE_LEN);
 
 	/* Read options */
 	int c;
 	while((c = getopt(argc, argv, SIBYL_SRV_OPTS)) != -1){
+                if(optarg == NULL)
+                        c = 'h';
 		switch(c){
 			case 'd':
-				decr_namefile = optarg;
+                                strncpy(decr_namefile, 
+                                        optarg,
+                                        _POSIX_PATH_MAX);
 				break;
 			case 's':
-				sign_namefile = optarg;
+                                strncpy(sign_namefile,
+                                        optarg,
+                                        _POSIX_PATH_MAX);
 				break;
 			case 'p':
-				port = optarg;
+                                strncpy(port,
+                                        optarg,
+                                        9);
 				break;
 			case 'i':
-				ip = optarg;
+                                strncpy(ip,
+                                        optarg,
+                                        _POSIX_PATH_MAX);
 				break;
 			case 'D':
-				dir = optarg;
+                                strncpy(dir,
+                                        optarg,
+                                        _POSIX_PATH_MAX);
 				break;
 			case 'h':
 			default:
@@ -79,73 +109,75 @@ int main (int argc, char *argv[])
 	}
 
 	/* Read private keys */
-	result = read_keys(&decrypt,
+	retval = read_keys(&decrypt,
 			   decr_namefile,
 			   &sign,
 			   sign_namefile,
 			   dir);
-	if(result != SIBYL_SUCCESS){
-		D("Error reading keys");
-		exit(SIBYL_KEYS_ERROR);
-	}
+	if(retval != SIBYL_SUCCESS)
+                goto FREE;
         D("Private keys read");
 
 	/* Start server */
-	result = start_server(&sock,
+	retval = start_server(&sock,
 			      ip,
 			      port);
-	if(result != SIBYL_SUCCESS){
-		D("Error starting server");
-		exit(SIBYL_LISTEN_ERROR);
+	if(retval != SIBYL_SUCCESS){
+                goto FREE;
 	}
         D("Server started\n");
 
 	while(1){
 		/* Accept connection */
 		sin_size = sizeof client_addr;
-		newsock = accept(sock, (struct sockaddr *)&client_addr, &sin_size);
+		newsock = accept(sock, 
+                                 (struct sockaddr *)&client_addr, 
+                                 &sin_size);
 		if (newsock == -1){
 			perror("server: accept");
 			continue;
 		}
 
 		inet_ntop(client_addr.ss_family,
-			  get_in_addr((struct sockaddr *)&client_addr), s, sizeof(s));
-		printf("server: got connection from %s\n", s);
+			  get_in_addr((struct sockaddr *)&client_addr), 
+                          s, 
+                          sizeof(s));
+		D1("server: got connection from %s\n", s);
 
 		if (!fork()){ // child process
 			close(sock); // child doesn't need the listener
+			char *strnonce = NULL;
+			char *msg      = NULL;
+                        char command   = 0;
+			char *token[3] = {NULL,NULL,NULL};
+			char *p1_data     = NULL;
+                        char *p2_data     = NULL;
+                        char *auth_result = NULL;
 
 			/* Send the nonce */
-			char *strnonce;
 			strnonce = (char *) calloc(17, sizeof(char));
                         if (strnonce == NULL){
-                                D("Error: strnonce calloc");
-                                return(SIBYL_NONCE_ERROR);
+                                retval = SIBYL_OSERR;
+                                goto ENDCHILD;
                         }
 
-			result = send_nonce(newsock, strnonce);
-			if (result != SIBYL_SUCCESS){
-				D("Error sending the nonce");
-				exit(result);
+			retval = send_nonce(newsock, strnonce);
+			if (retval != SIBYL_SUCCESS){
+                                goto ENDCHILD;
 			}
 
 			/* Receive the client's message and parse it */
-			char *msg;
-                        char command = 0;
-			char *token[3] = {0,0,0};
 			msg = (char *) calloc(SIBYL_MAX_MSG, sizeof(char));
 			if(msg == NULL){
-				D("Unable to allocate memory for the client's message");
-				exit(errno);
+                                retval = SIBYL_OSERR;
+                                goto ENDCHILD;
 			}
-			result = receive_msg(msg,
+			retval = receive_msg(msg,
 					     newsock,
                                              &command,
 					     token);
-			if (result != SIBYL_SUCCESS){
-				D("Error receiving the client's message");
-				exit(result);
+			if (retval != SIBYL_SUCCESS){
+                                goto ENDCHILD;
 			}
 
         		D1("Received: [%s]\n", msg);
@@ -161,29 +193,29 @@ int main (int argc, char *argv[])
 
                         /* Just send the public keys */
                         if(command == '-'){
-                                result = send_public_keys(dir,
+                                retval = send_public_keys(dir,
                                                           decr_namefile,
                                                           sign_namefile,
                                                           newsock);
-                                exit(result);
+                                goto ENDCHILD;
                         }
                         
                         /* Any other command requires decryption of p1 */
 			/* Decrypt p1 (p1 = token[1]) */
                         /* p1_data always includes a trailing 0 */
-			char *p1_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
+                        p1_data = (char *)calloc(RSA_size(decrypt) + 1, 
+                                                 sizeof(u_char));
                         if(p1_data == NULL){
-                                perror("Unable to allocate memory for p1_data");
-                                exit(errno);
+                                retval = SIBYL_OSERR;
+                                goto ENDCHILD;
                         }
 
-			result = decrypt_token(p1_data,
+			retval = decrypt_token(p1_data,
                                                command,
 					       token[1],
 					       decrypt);
-			if (result != SIBYL_SUCCESS){
-				D("Error decrypting p1");
-                                exit (result);
+			if (retval != SIBYL_SUCCESS){
+                                goto ENDCHILD;
 			}
 
 			D1("p1_data: %s\n", p1_data);
@@ -193,74 +225,92 @@ int main (int argc, char *argv[])
                          * and translation is asked for.
                          */
                         if(command != 0){
-                                if(strncmp(strnonce, token[0], strlen(strnonce))){
+                                if(strncmp(strnonce, 
+                                           token[0], 
+                                           strlen(strnonce))){
                                         D("Wrong nonce");
-                                        exit(SIBYL_NONCE_ERROR);
+                                        retval = SIBYL_NONCE_ERROR;
+                                        goto ENDCHILD;
                                 }
-                                result = translate_and_send(p1_data,
+                                retval = translate_and_send(p1_data,
                                                             command,
                                                             decr_namefile,
                                                             dir,
                                                             newsock,
                                                             sign);
-                                if(result != SIBYL_SUCCESS){
-                                        D("Error while transalting");
-                                }
-                                exit(result);
+                                goto ENDCHILD;
                         }
 
 			/* 
                          * Decrypt p2 (p2 = token[2]):
                          * only if command == verify
                          */
-			char *p2_data = (char *)calloc(RSA_size(decrypt) + 1, sizeof(u_char));
+                        p2_data = (char *)calloc(RSA_size(decrypt) + 1, 
+                                                 sizeof(u_char));
                         if(p2_data == NULL){
                                 perror("Unable to allocate memory for p2_data");
-                                exit(errno);
+                                retval = SIBYL_OSERR;
+                                goto ENDCHILD;
                         }
-			result = decrypt_token(p2_data,
+			retval = decrypt_token(p2_data,
                                                command,
 					       token[2],
 					       decrypt);
-			if (result != SIBYL_SUCCESS){
-				D("Error decrypting p2");
-				exit(result);
+			if (retval != SIBYL_SUCCESS){
+                                goto ENDCHILD;
 			}
 
 			D1("p2_data: %s\n", p2_data);
 
 			/* Is the password correct */
-			char *auth_result = calloc(1, sizeof(char));
+                        auth_result = calloc(1, sizeof(char));
 			if(auth_result == NULL){
 				D("Unable to allocate memory for auth_result");
-				exit(errno);
+                                retval = SIBYL_OSERR;
+                                goto ENDCHILD;
 			}
-			result = is_pwd_ok(p1_data,
+			retval = is_pwd_ok(p1_data,
 					   p2_data,
 					   auth_result,
 					   strnonce);
-			if (result != SIBYL_SUCCESS){
-				D("Error checking is the password is OK");
-				exit(result);
+			if (retval != SIBYL_SUCCESS){
+                                goto ENDCHILD;
 			}
 
 			/* Send the response to the client */
 
-			result = send_response(&newsock,
+			retval = send_response(&newsock,
 					       token,
 					       auth_result,
 					       sign);
-			if (result != SIBYL_SUCCESS){
-				D("Error sending the response");
-				exit(result);
+			if (retval != SIBYL_SUCCESS){
+                                goto ENDCHILD;
 			}
+
+                ENDCHILD:
+                        free(strnonce);
+                        free(msg);
+                        free(p1_data);
+                        free(p2_data);
+                        free(auth_result);
 
 			/* Close socket */
 			close(newsock);
+                        retval = SIBYL_SUCCESS;
+                        goto FREE;
 			exit(0);
 		}
 		close(newsock); // parent doesn't need this
 	}
 
-	return 0;
+FREE:
+
+        RSA_free(decrypt);
+        RSA_free(sign);
+        free(dir);
+        free(ip);
+        free(port);
+        free(decr_namefile);
+        free(sign_namefile);
+	return retval;
 }

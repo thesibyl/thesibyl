@@ -1,5 +1,5 @@
-/* Sibyl server functions
- *
+/* 
+ * Sibyl server functions
  */
 #include <stdio.h>
 #include <stdlib.h>
