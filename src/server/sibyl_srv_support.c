@@ -455,7 +455,8 @@ int receive_msg(char *msg,
 	}
 
 FREE:
-        free(new_ptr);
+        /* Cannot free new_ptr: THESE ARE THE TOKENS! */
+        // free(new_ptr);
 	return(retval);
 }
 
@@ -478,7 +479,7 @@ FREE:
  */
 int decrypt_token(char *p_data,
                   char key,
-	          char *token,
+	          char *tkn,
 	          RSA *decrypt){
         int retval = SIBYL_SUCCESS;
 
@@ -487,12 +488,15 @@ int decrypt_token(char *p_data,
 
 	p_rsa = (char *)calloc(RSA_size(decrypt) + 1, 1);
 	if(p_rsa == NULL){
-		D("Error: Unable to allocate memory for token_rsa");
+		D("Error: Unable to allocate memory for tkn_rsa");
                 retval = errno;
                 goto FREE;
 	}
 
-	b64_pton(token,
+        printf("Decrypt: {%s}\n", tkn);
+
+
+	b64_pton(tkn,
 		 (u_char *)p_rsa,
 		 RSA_size(decrypt) + 1);
 
@@ -666,7 +670,7 @@ int translate_and_send(char *p1_data,
                 retval = SIBYL_KEYS_ERROR;
                 goto FREE;
         }
-        
+
         PEM_read_RSA_PUBKEY(public, &pub_key, NULL, NULL);
         if(pub_key == NULL){
                 D("Unable to initialise pub_key");

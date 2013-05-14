@@ -213,11 +213,17 @@ int main (int argc, char *argv[]){
                                 goto ENDCHILD;
                         }
 
+
+                        D1("token[1]:{%s}\n", token[1]);
+                        /* this is pathetic */
+                        char *puta = (char *)calloc(1024,1);
+                        memcpy(puta, token[1], strlen(token[1]));
 			retval = decrypt_token(p1_data,
                                                command,
-					       token[1],
+					       puta,
 					       decrypt);
 			if (retval != SIBYL_SUCCESS){
+                                printf("Fuck\n");
                                 goto ENDCHILD;
 			}
 
@@ -227,6 +233,7 @@ int main (int argc, char *argv[]){
                          * If command != \000 then it is '0' <= command <='9'
                          * and translation is asked for.
                          */
+                        D1("token[0]:{%s}\n", token[0]);
                         if(command != 0){
                                 if(strncmp(strnonce, 
                                            token[0], 

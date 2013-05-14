@@ -1,5 +1,5 @@
 # put common definitions in here
-CC	  = gcc
+CC	  = clang
 CFLAGS    = -Wall -DDEBUG -g 
 INC       = -I../lib # will be in other dirs
 INC_OSX   = -I../lib -I/opt/local/include
