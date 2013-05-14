@@ -157,6 +157,7 @@ int main (int argc, char *argv[]){
 			/* Send the nonce */
 			strnonce = (char *) calloc(17, sizeof(char));
                         if (strnonce == NULL){
+                                D("Malloc");
                                 retval = SIBYL_OSERR;
                                 goto ENDCHILD;
                         }
@@ -169,6 +170,7 @@ int main (int argc, char *argv[]){
 			/* Receive the client's message and parse it */
 			msg = (char *) calloc(SIBYL_MAX_MSG, sizeof(char));
 			if(msg == NULL){
+                                D("Malloc");
                                 retval = SIBYL_OSERR;
                                 goto ENDCHILD;
 			}
@@ -206,6 +208,7 @@ int main (int argc, char *argv[]){
                         p1_data = (char *)calloc(RSA_size(decrypt) + 1, 
                                                  sizeof(u_char));
                         if(p1_data == NULL){
+                                D("Malloc strnonce");
                                 retval = SIBYL_OSERR;
                                 goto ENDCHILD;
                         }

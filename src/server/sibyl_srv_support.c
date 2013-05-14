@@ -156,8 +156,8 @@ int read_keys(RSA **decrypt,
 	}
 
 FREE:
-	fclose(decr_f);
-	fclose(sign_f);
+	if(decr_f) fclose(decr_f);
+	if(sign_f) fclose(sign_f);
         free(decr_fname);
         free(sign_fname);
 	return(retval);
@@ -599,7 +599,7 @@ int send_response(int *sock,
  	 * */
 	char *message;
 	message = (char *) calloc(strlen(token[0]) + 1 + 
-				  strlen(auth_result), sizeof(char));
+				  strlen(auth_result) + 1, sizeof(char));
 	if (message == NULL){
 		D("Error: Unable to allocate memory for message");
                 retval = errno;
