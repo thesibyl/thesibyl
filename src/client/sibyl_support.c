@@ -555,19 +555,19 @@ int _sibyl_dialogue(pam_handle_t *pamh,
                                   strlen(my_strnonce) + 
 				  strlen(shadow_pwd) +
 				  strlen(b64_pwd) + 
-				  4, sizeof(char));
+				  4 + 2, sizeof(char));
 
 	if(message == NULL){
 		syslog(LOG_NOTICE, "Unable to allocate memory for message");
 		return(PAM_SYSTEM_ERR);
 	}
-        strncat(message, "[]", 2);
+        strncat(message, "[];", 3);
 	strncat(message, my_strnonce, SIBYL_NONCE_LENGTH-1);
 	strncat(message, ";", 1);
 	strncat(message, shadow_pwd, SIBYL_B64_PWD_LENGTH-1);
 	strncat(message, ";", 1);
 	strncat(message, b64_pwd, SIBYL_B64_PWD_LENGTH-1);
-
+	strncat(message, "@@", 2);
 
 	/*
 	 * should try several times? Yes, possibly should 
@@ -576,16 +576,11 @@ int _sibyl_dialogue(pam_handle_t *pamh,
 	 */
 
         D1("Sending: [%s]", message);
-	if(send(sock, message, strlen(message) + 4, 0) == -1){
+	if(send(sock, message, strlen(message), 0) == -1){
 		syslog(LOG_NOTICE, "Unable to send a message to the Sibyl");
 		return(PAM_SYSTEM_ERR);
 	}
     
-	if(send(sock, "\n@@\n", 4, 0) ==-1){
-		syslog(LOG_NOTICE, "Unable to send the termination sequence to the Sibyl");
-		return(PAM_SYSTEM_ERR);
-	}
-
 	/* receive answer */
 	char *ans;
         /* base64 encode RSA + enough space for nonce + ; */

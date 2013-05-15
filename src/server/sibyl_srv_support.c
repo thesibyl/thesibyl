@@ -272,27 +272,14 @@ int send_nonce(int sock,
 
 	u_char nonce[9];
 	int count;
-	FILE *rand_f = NULL;
 	int seed;
 	struct timeval tv;
 
-	// seed some bytes into the PRNG
-	if((rand_f = fopen("/dev/random", "r")) == NULL){
-		gettimeofday(&tv,0);
-		seed = tv.tv_sec + tv.tv_usec;
-	} else {
-		if(fread(&seed,sizeof(seed),1,rand_f) == 1) {
-			fclose(rand_f);
-		} else {
-			gettimeofday(&tv,0);
-			seed = tv.tv_sec + tv.tv_usec;
-		}
-	}
-	RAND_seed((const void *)&seed, sizeof(seed));
-
 	// generate a random nonce.
         // this may need to be larger than 8 bytes
-	RAND_bytes(nonce, 8);
+        // we get bytes until the process succeeds (i.e. there
+        // has been enough entropy in the pool).
+	while(!RAND_bytes(nonce, 8));
 	for(count = 0; count < 8; count++)
 		sprintf((strnonce)+count*2, "%02X", nonce[count]);
 
