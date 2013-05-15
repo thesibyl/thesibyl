@@ -630,7 +630,7 @@ int translate_and_send(char *p1_data,
         char *encrypted_p1 = NULL;
         char *b64_enc_p1   = NULL;
 
-        public_fname = (char *)calloc(strlen(decr_namefile)+5, sizeof(char));
+        public_fname = (char *)calloc(_POSIX_PATH_MAX+1, sizeof(char));
         if(public_fname == NULL){
                 D("Unable to allocate memory for public_fname");
                 retval = errno;

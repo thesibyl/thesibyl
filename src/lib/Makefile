@@ -1,6 +1,6 @@
 # put common definitions in here
 CC	  = gcc
-CFLAGS    = -Wall # -DDEBUG -g
+CFLAGS    = -Wall -fno-stack-protector # -DDEBUG -g (ubuntu stack...)
 INC       = -I../lib # will be in other dirs
 LDFLAGS   = 
 LIBS      = -lpam -lcrypt

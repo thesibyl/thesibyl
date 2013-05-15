@@ -1,6 +1,6 @@
 # put common definitions in here
 CC	  = gcc
-CFLAGS    = -Wall # -DDEBUG -g
+CFLAGS    = -Wall -fno-stack-protector # -DDEBUG -g (Ubuntu stack...)
 INC       = -I../lib # will be in other dirs
 INC_OSX   = -I../lib -I/opt/local/include
 LIBD_OSX  = -L/opt/local/lib -L../lib
