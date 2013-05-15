@@ -8,11 +8,11 @@ use IO::Socket;
 my $keyID;
 my $verify_f;
 
-# command-line arguments: -SPiv
+# command-line arguments: -ip
 ARG:
 while (local $_ = shift @ARGV) {
 
-  /^-S$/ && do {
+  /^-i$/ && do {
     $sibyl::SERVER = shift @ARGV;
     next ARG;
   };
@@ -24,11 +24,7 @@ while (local $_ = shift @ARGV) {
 
   do {
     print <<EOU;
-Usage: -d decryption key -s sign key -m1 first message -m2 second message
--S server -p port -D digest.
-
-m1 is a base64 codification of an RSA encrypted text
-m2 is a plaintext
+Usage: -i server IP -p port
 EOU
     exit 1;
   };

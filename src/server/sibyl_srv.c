@@ -309,7 +309,6 @@ int main (int argc, char *argv[]){
 			close(newsock);
                         retval = SIBYL_SUCCESS;
                         goto FREE;
-			exit(0);
 		}
 		close(newsock); // parent doesn't need this
 	}
@@ -323,5 +322,5 @@ FREE:
         free(port);
         free(decr_namefile);
         free(sign_namefile);
-	return retval;
+	exit(retval);
 }

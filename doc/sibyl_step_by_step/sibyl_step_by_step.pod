@@ -33,25 +33,25 @@ different machine (the Sibyl) which acts as the oracle.
 
 =item 1 Get a machine
 
-First we need a 'Sibyl', which is a different machine from 
+First we need a 'Sibyl', which is a different machine from
 the server we want  to log in to. We are using a Bifferboard as a proof of concept
 (http://bifferos.bizhat.com/).
 
 =item 2 Install Linux on it
 
-We assume a linux distro has been installed on the Sibyl (See the 
+We assume a linux distro has been installed on the Sibyl (See the
 "Install Slackware on a bifferboard" manual if you are using a Bifferboard).
 
 =item 3 Generate the RSA pairs
 
-Create two RSA key pairs in the Sibyl (we use 2048bit keys): the encryption 
+Create two RSA key pairs in the Sibyl (we use 2048bit keys): the encryption
 pair and the signing pair
 
 =over
 
 =item 1 Encryption/Decryption pair
 
-Create the en/decryption pair with openssl. The private key will be named 
+Create the en/decryption pair with openssl. The private key will be named
 'decrypt' and the public one 'decrypt.pub'
 
   # openssl genrsa -out decrypt 2048
@@ -61,7 +61,7 @@ Create the en/decryption pair with openssl. The private key will be named
   ...................................+++
   e is 65537 (0x10001)
 
-  # cat decrypt 
+  # cat decrypt
   -----BEGIN RSA PRIVATE KEY-----
   MIIEowIBAAKCAQEAwUQqL3lCVrfSQZVfMGfDg8Ee0HGTVk7B0th8Qzmcj/jQidd7
   cPA0kje0/JPZsXt8i+x1j/JoIoB42CTFfSB7/PcoF39S41xbtYdD7TlJIu1tdYeJ
@@ -115,7 +115,7 @@ Creating the signing pair with openssl. The private key will be named
   ..........+++
   e is 65537 (0x10001)
 
-  # cat sign 
+  # cat sign
   -----BEGIN RSA PRIVATE KEY-----
   MIIEowIBAAKCAQEA5jwDvV7lpErFLcTn4F4CgFbfHSr7xEvVoYu3KJ2QIW1ryZnM
   pm+J75dBv/oQ1LnFe9S1o+ziG72NhfU6bxlBFGXwGXgpKQLIkl0cMlvMCWDCKOiv
@@ -174,24 +174,51 @@ Creating the signing pair with openssl. The private key will be named
 
 =item 2 Copy the public keys (generated on the sibyl) into the /etc/sibyl directory.
 
-Notice that the private keys *must never leave the Sibyl*. Their secrecy 
-is the basis for the security of this system. 
+Notice that the private keys *must never leave the Sibyl*. Their secrecy
+is the basis for the security of this system.
+
+In order to copy these keys, you may prefer to use the perl script get_keys.pl,
+which is included in the src/client/ directory, like
+
+  $ perl get_keys.pl -i 192.168.1.1 -p 9999
+
+Assuming the sibyl's IP and port are the ones above. This command retrieves the contents
+of the public decryption and signing keys and prints them on the screen. You can copy
+them and save them (from the -----BEGIN to the -----END lines, included) as decrypt.pub
+and sign.pub in the /etc/sibyl directory.
 
 =begin forlater We have not password-secured
 them in the examples, but you might as well do so.
-
-=end forlater
 
   # scp root@sibyl:*.pub .
   decrypt.pub
   sign.pub
 
-=item 3 Create the shadow file 
+=end forlater
+
+=item 3 Create the shadow file
 
 This is where the user authentication tokens will be stored
 (/etc/sibyl/shadow).
 
 =over
+
+=item 0. Sample script for turning /etc/shadow into something usable
+by the sibyl.
+
+If you plan to turn your login services into services managed by the
+sibyl, you probably want to transform the /etc/shadow file into one
+suitable for use with the sibyl (if your system uses this file). 
+The script shadow2sibyl.pl in the lib directory performs this step for
+you. An example of usage is:
+
+  $ perl shadow2sibyl -k /etc/sibyl/decrypt.pub < /etc/shadow > /etc/sibyl/shadow
+
+This will transform all the lines in /etc/shadow into the corresponding
+lines appropriate for communicating with the sibyl.
+
+For other uses, you should follow the steps below according to your
+system/application.
 
 =item 1. Encrypt (with crypt(3)) the user password
 
@@ -345,8 +372,12 @@ Compute p2=base64_encode(RSA_encrypt("nonce_sibyl:crypt(password,salt)))
 
 =item 7 Query the Sibyl
 
-The AS sends $nonce_as;$p1;$p2 to the Sibyl.
+The AS sends [];$nonce_as;$p1;$p2 to the Sibyl.
 Note that this nonce is different from the one received from the Sibyl.
+
+The '[]' is a literal pair of square brackets. This is needed because
+the Sibyl accepts different messages, which are encoded in this first
+parameter. A pair of square brackets means 'normal operation'.
 
 Generate the nonce:
 
@@ -354,7 +385,7 @@ Generate the nonce:
   # echo $nonce_as
   28145
 
-  The AS sends $nonce_as;$p1;p2
+  The AS sends [];$nonce_as;$p1;p2
 
 =item 8 Sibyl: decrypt p1
 

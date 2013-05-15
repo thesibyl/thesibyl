@@ -14,6 +14,11 @@ my $encr_key = Crypt::OpenSSL::RSA->new_public_key($keyb64) or
 my $os = "shadow-file";
 ARG:
 while (local $_ = shift @ARGV) {
+  /^-k$/ && do {
+    $keyID = shift @ARGV;
+    next ARG;
+  };
+
   /^-snow-leopard$/ && do {
     $os = "snow-leopard";
     next ARG;
