@@ -759,8 +759,6 @@ int send_public_keys(char *dir,
         }
 
 FREE:
-        fclose(d);
-        fclose(s);
         free(decr_path);
         free(sign_path);
         
