@@ -1,0 +1,147 @@
+=begin html
+    <meta>
+      <link rel="stylesheet" type="text/css" href="sibyl.css" />
+    </meta>
+    <div id="title">
+      The Sibyl
+    </div>
+    <div id="subtitle">
+      Another layer of security for authentication
+    </div>
+    <p>
+    <div id="menubar">
+      <a href="index.html">Home</a> 
+      <a href="download.html">Download</a>
+      <a href="faq.html">FAQ</a>
+      <a href="sibyl_step_by_step.html">Details</a>
+      <a href="technical.html">Technical</a>
+    </div>
+    </p>
+
+=end html
+
+=head1 The protocol of the Sibyl
+
+The communication between the login server and the Sibyl must needs be as simple as
+possible, as the latter is devised to perform essentially a single operation (checking
+whether two authentication tokens match). Hence, there is a very limited set of commands
+which it will respond to.
+
+The Sibyl is designed to be as silent as possible and *will not report mistakes*: if any
+command or communication attempt does not conform to the protocol described below, it
+will close the connection silently.
+
+The syntax of the commands understood by the sibyl is:
+
+"[X];nonce;param1;param2@@"
+
+where:
+
+=over
+
+=item [X] denotes either a literal '[]' or '[-]' or a digit (0 to 9) between square brackets.
+
+Each of these commands means:
+
+=over
+
+=item '[]': Perform the standard operation (check two tokens for match).
+
+=item '[-]': Send back the public decryption and signing keys.
+
+This command needs no parameters (so it is just '[-];nonce;@@')
+
+=item '[D]': (where D) is a digit. Translate the parameter (only one) from one encryption
+key to the encryption key with digit D.
+
+This is only needed when updating encryption keys on the Sibyl: whenever a new encryption
+key is generated, it *must* have the same name as the original one (say 'decrypt') with a
+trailing digit (f.e. 'decrypt7'). This command will ask the Sibyl to decrypt the first
+parameter using the key 'decrypt' and reencrypt it using the (public) key 'decrypt7.pub'.
+
+The Sibyl will (if the command runs successfully) perform the reencryption and send the
+new encrypted key back to the server.
+
+There is a sample script 'translate_client.pl' in the src/client directory which
+automates this process for shadow-type files.
+
+This is the *only* way to update the stored authentication tokens on the login server.
+
+=item '[-]': Send the public keys
+
+The Sibyl will send back the public keys as a text stream. The user will then
+have to save their contents according to the configuration on the server.
+
+There is a script 'get_keys.pl' in the src/client directory which sends this
+command to the Sibyl.
+
+=back
+
+=item The 'nonce' parameter is:
+
+For the standard operation (the '[]' case), a new nonce (sixteen hex digits).
+
+For the '[-]' and '[D]' operations, the same nonce as the Sibyl sent back.
+
+
+=item The parameters are:
+
+param1: In the '[]' case (ordinary operation), the stored authentication token,
+which *contains the SALT*. In the '[D]' case, the stored authentication token,
+*without* the salt.
+
+param2: Only used in the '[]' case, the authentication token as received by
+the login server (and publicly encrypted+base 64 encoded), as explained in
+the main documentation.
+
+The trailing *two* 'at' signs '@@' are required always. They indicate the end
+of the message.
+
+=back
+
+The commands understood by the Sibyl are:
+
+=over
+
+=item 
+
+
+
+=back
+
+
+
+
+=begin html
+
+      <div id="reminder">
+      <p>
+	This security project, the <strong>Sibyl</strong>,  has been
+	invented and implemented by
+	<a href="http://pfortuny.net">Pedro Fortuny</a> and <a href="http://rafacas.net">
+	  Rafael Casado</a>. Keep updated.
+      </p>
+      <p>
+         You can also see <a href="http://www.linkedin.com/profile/view?id=24022019">Pedro</a>'s
+         and <a href="http://www.linkedin.com/profile/view?id=11581943">Rafa</a>'s LinkedIn
+         profiles.
+     </p>
+      <p>
+	All the documentation in this domain is published under a 
+	<a href="http://creativecommons.org/licenses/by/3.0/">Creative Commons-By 
+	  Attribution
+	  licence</a>. All
+	the code is made public subject to
+	the <a href="http://creativecommons.org/licenses/BSD/"> BSD licence</a>.
+      </p>
+      </div>
+    </div>
+    <div id="footer">
+      (c) 2010 Pedro Fortuny Ayuso and Rafael Casado S&aacute;nchez.
+    </div>
+
+
+=end html
+
+
+=cut
