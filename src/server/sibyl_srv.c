@@ -215,8 +215,8 @@ int main (int argc, char *argv[]){
 
 
                         D1("token[1]:{%s}\n", token[1]);
-                        /* this is pathetic */
-                        char *resp = (char *)calloc(RSA_size(decrypt) + 1,
+                        /* this is path */
+                        char *resp = (char *)calloc(SIBYL_MAX_MSG,
                                                     sizeof(u_char));
                         memcpy(resp, token[1], strlen(token[1]));
 			retval = decrypt_token(p1_data,
