@@ -394,7 +394,7 @@ int receive_msg(char *msg,
            *command != '-' &&
            !('0' <= *command &&
              *command <= '9')){
-                D1("Wrong command:{%c}", command);
+                D1("Wrong command:{%c}", *command);
                 retval = SIBYL_MALFORMED_MSG;
                 goto FREE;
         }
