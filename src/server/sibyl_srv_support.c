@@ -272,8 +272,6 @@ int send_nonce(int sock,
 
 	u_char nonce[9];
 	int count;
-	int seed;
-	struct timeval tv;
 
 	// generate a random nonce.
         // this may need to be larger than 8 bytes
