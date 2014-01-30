@@ -2,6 +2,8 @@
 
 # Bootstrap script for the sibyl #
 
+BUILD_DIR=build
+
 touch ./NEWS
 touch ./README
 touch ./AUTHORS
@@ -13,6 +15,10 @@ autoheader
 autoconf
 automake --add-missing
 
-mkdir build && cd build
+if test -d $BUILD_DIR; then
+	mkdir $BUILD_DIR
+fi
+
+cd build
 ../configure
 make

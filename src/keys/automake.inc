@@ -20,3 +20,8 @@ decrypt.pub:
 
 cleankeys:
 	@rm sign sign.pub decrypt decrypt.pub {~} || true
+
+installkeys: keys
+	@mkdir -p @sysconfdir@/thesibyl
+	@cp *.pub @sysconfdir@/thesibyl
+	
