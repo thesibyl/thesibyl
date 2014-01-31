@@ -15,7 +15,7 @@ autoheader
 autoconf
 automake --add-missing
 
-if test -d $BUILD_DIR; then
+if ! test -d $BUILD_DIR; then
 	mkdir $BUILD_DIR
 fi
 
