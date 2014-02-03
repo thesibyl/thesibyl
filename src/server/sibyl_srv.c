@@ -46,10 +46,10 @@ int main (int argc, char *argv[]){
         char *sign_namefile = NULL;
 
         dir  = (char *)calloc(_POSIX_PATH_MAX + 1, sizeof(char));
-        ip   = (char *)calloc(_POSIX_PATH_MAX + 1, sizeof(char));
+        ip   = (char *)calloc(17 + 1, sizeof(char));
         port = (char *)calloc(10, sizeof(char));
-        decr_namefile = (char *)calloc(FILE_LEN + 1, sizeof(char));
-        sign_namefile = (char *)calloc(FILE_LEN + 1, sizeof(char));
+        decr_namefile = (char *)calloc(_POSIX_PATH_MAX + 1, sizeof(char));
+        sign_namefile = (char *)calloc(_POSIX_PATH_MAX + 1, sizeof(char));
 
         if(dir == NULL || ip == NULL || port == NULL ||
            decr_namefile == NULL || sign_namefile == NULL){
@@ -60,8 +60,8 @@ int main (int argc, char *argv[]){
 
         strncpy(dir, SIBYL_DIR, _POSIX_PATH_MAX);
         strncpy(port, SIBYL_PORT, 9);
-        strncpy(decr_namefile, SIBYL_DECR_KEY, FILE_LEN);
-        strncpy(sign_namefile, SIBYL_SIGN_KEY, FILE_LEN);
+        strncpy(decr_namefile, SIBYL_DECR_KEY, _POSIX_PATH_MAX);
+        strncpy(sign_namefile, SIBYL_SIGN_KEY, _POSIX_PATH_MAX);
 
 	/* Read options */
 	int c;
