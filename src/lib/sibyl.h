@@ -66,7 +66,7 @@
 #define SIBYL_PORT  "9999"
 
 #ifndef _OPENPAM
-static char password_prompt[] = "Password:";
+/* static char password_prompt[] = "Password:"; */
 #endif
 
 #ifndef PAM_EXTERN
