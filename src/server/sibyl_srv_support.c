@@ -272,8 +272,6 @@ int send_nonce(int sock,
 
 	u_char nonce[9];
 	int count;
-	int seed;
-	struct timeval tv;
 
 	// generate a random nonce.
         // this may need to be larger than 8 bytes
@@ -396,7 +394,7 @@ int receive_msg(char *msg,
            *command != '-' &&
            !('0' <= *command &&
              *command <= '9')){
-                D1("Wrong command:{%c}", command);
+                D1("Wrong command:{%c}", *command);
                 retval = SIBYL_MALFORMED_MSG;
                 goto FREE;
         }
