@@ -1,3 +1,6 @@
+#ifndef __SIBYL_SRV_SUPPORT_H__
+#define __SIBYL_SRV_SUPPORT_H__
+
 /* Sibyl server options:
  * -d decrypt -> private key for decryption (default: decrypt)
  * -s sign    -> private key for signing (default: sign)
@@ -57,3 +60,5 @@ int send_public_keys(char *dir,
 int sign_msg_and_send(char *msg,
                       RSA *sign,
                       int sock);
+
+#endif /* __SIBYL_SRV_SUPPORT_H__ */
