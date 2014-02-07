@@ -132,11 +132,11 @@ main (int argc, char *argv[])
 		if (!fork()) { /* child process */
 			close(sock); /* child doesn't need the listener */
 			char *strnonce = NULL;
-			char *msg      = NULL;
-                        char command   = 0;
+			char *msg = NULL;
+                        char command = 0;
 			char *token[3] = { NULL, NULL, NULL};
-			char *p1_data     = NULL;
-                        char *p2_data     = NULL;
+			char *p1_data = NULL;
+                        char *p2_data = NULL;
                         char *auth_result = NULL;
 
 			/* Send the nonce */
