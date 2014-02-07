@@ -21,14 +21,18 @@
 #include "sibyl_srv_support.h"
 
 // get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa){
+void *
+get_in_addr(struct sockaddr *sa)
+{
 	if (sa->sa_family == AF_INET) {
 		return &(((struct sockaddr_in*)sa)->sin_addr);
 	}
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-int main (int argc, char *argv[]){
+int
+main (int argc, char *argv[])
+{
 	int sock, newsock;
 	struct sockaddr_storage client_addr;
 	socklen_t sin_size;

@@ -28,7 +28,8 @@
 #include "bsd-base64.h"
 #include "sibyl_srv_support.h"
 
-void sigchld_handler(int s)
+void 
+sigchld_handler(int s)
 {
 	while(waitpid(-1, NULL, WNOHANG) > 0);
 }
@@ -37,7 +38,9 @@ void sigchld_handler(int s)
 /*
  * Passphrase callback (not used by us)
  */
-int pass_cb( char *buf, int size, int rwflag, void *u ){
+int
+pass_cb(char *buf, int size, int rwflag, void *u)
+{
         
         int retval = SIBYL_SUCCESS;
 
@@ -58,7 +61,7 @@ int pass_cb( char *buf, int size, int rwflag, void *u ){
                 goto END;
 	}
 
-	printf( "Enter PEM pass phrase for '%s': ", (char*)u );
+	printf("Enter PEM pass phrase for '%s': ", (char*)u);
         sprintf(fmt, "%%%is", PASSPHRASE_MAX_LENGTH);
 	scanf(fmt, pass );
 
@@ -93,11 +96,10 @@ END:
  *   The variables **decrypt and **sign are filled with the appropriate content
  *
  */
-int read_keys(RSA **decrypt,
-	      char *decr_filename,
-	      RSA **sign,
-	      char *sign_filename,
-	      char *dir){
+int
+read_keys(RSA **decrypt, char *decr_filename, RSA **sign, char *sign_filename,
+		char *dir)
+{
 
         int retval = SIBYL_SUCCESS;
 
@@ -178,9 +180,9 @@ FREE:
  *   The *sock variable is filled with the appropriate content
  *
  */
-int start_server(int *sock,
-		 char *ip,
-		 char *port){
+int
+start_server(int *sock, char *ip, char *port)
+{
         int retval = SIBYL_SUCCESS;
 
 	struct addrinfo hints, *srvinfo, *p;
@@ -265,8 +267,9 @@ FREE:
  *   The strnonce is filled with the nonce
  *
  */
-int send_nonce(int sock,
-	       char *strnonce){
+int
+send_nonce(int sock, char *strnonce)
+{
 
         int retval = SIBYL_SUCCESS;
 
@@ -319,10 +322,9 @@ FREE:
  *   The token array is filled with the item parsed from the message.
  *
  */
-int receive_msg(char *msg,
-		int sock,
-                char *command,
-		char *token[3]){
+int
+receive_msg(char *msg, int sock, char *command, char *token[3])
+{
         int retval = SIBYL_SUCCESS;
 
 	int count_bytes = 0;
@@ -462,10 +464,9 @@ FREE:
  *   *p_data is filled with the decrypted token
  *
  */
-int decrypt_token(char *p_data,
-                  char key,
-	          char *tkn,
-	          RSA *decrypt){
+int
+decrypt_token(char *p_data, char key, char *tkn, RSA *decrypt)
+{
         int retval = SIBYL_SUCCESS;
 
 	int rsa_d;
@@ -523,10 +524,9 @@ FREE:
  *   *auth_result is filled with the result of the password check
  *
  */
-int is_pwd_ok(char *p1_data,
-	      char *p2_data,
-	      char *auth_result,
-	      char *strnonce){
+int
+is_pwd_ok(char *p1_data, char *p2_data, char *auth_result, char *strnonce)
+{
 
         int retval = SIBYL_SUCCESS;
 
@@ -573,10 +573,9 @@ FREE:
  *   SIBYL_SSL_ERROR if there is any problem signing the response
  *
  */
-int send_response(int *sock,
-		  char *token[3],
-		  char *auth_result,
-		  RSA *sign){
+int
+send_response(int *sock, char *token[3], char *auth_result, RSA *sign)
+{
         int retval = SIBYL_SUCCESS;
 
 	/* Create the response, which is as follows:
@@ -613,12 +612,10 @@ FREE:
 }
 
 
-int translate_and_send(char *p1_data,
-                       char version,
-                       char *decr_namefile,
-                       char *dir,
-                       int  sock,
-                       RSA *sign){
+int
+translate_and_send(char *p1_data, char version, char *decr_namefile, char *dir,
+		int  sock, RSA *sign)
+{
 
         int retval = SIBYL_SUCCESS;
         
@@ -701,10 +698,9 @@ FREE:
 }
 
 
-int send_public_keys(char *dir,
-                     char *decr_fn,
-                     char *sign_fn,
-                     int sock){
+int
+send_public_keys(char *dir, char *decr_fn, char *sign_fn, int sock)
+{
 
         int retval = SIBYL_SUCCESS;
         char *decr_path = NULL;
@@ -764,7 +760,9 @@ FREE:
 }
 
 
-int sign_msg_and_send(char *msg, RSA *sign, int sock){
+int
+sign_msg_and_send(char *msg, RSA *sign, int sock)
+{
         int retval = SIBYL_SUCCESS;
 
         char *sha1_m        = NULL;
