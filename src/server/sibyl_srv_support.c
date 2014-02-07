@@ -208,7 +208,7 @@ start_server(int *sock, char *ip, char *port)
                 goto FREE;
 	}
 
-	// loop through all the results and bind to the first we can
+	/* loop through all the results and bind to the first we can */
 	for (p = srvinfo; p != NULL; p = p->ai_next) {
 		if ((*sock = socket(p->ai_family, p->ai_socktype,
 				p->ai_protocol)) == -1) {
@@ -244,7 +244,7 @@ start_server(int *sock, char *ip, char *port)
                 goto FREE;
 	}
 
-	sa.sa_handler = sigchld_handler; // reap all dead processes
+	sa.sa_handler = sigchld_handler; /* reap all dead processes */
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
 	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
@@ -284,10 +284,12 @@ send_nonce(int sock, char *strnonce)
 	u_char nonce[9];
 	int count;
 
-	// generate a random nonce.
-        // this may need to be larger than 8 bytes
-        // we get bytes until the process succeeds (i.e. there
-        // has been enough entropy in the pool).
+	/*
+	 * generate a random nonce.
+	 * this may need to be larger than 8 bytes
+	 * we get bytes until the process succeeds (i.e. there
+	 * has been enough entropy in the pool).
+	 */
 	while (!RAND_bytes(nonce, 8));
 
 	for (count = 0; count < 8; count++)
@@ -295,14 +297,14 @@ send_nonce(int sock, char *strnonce)
 
         strncat(strnonce, "@", 1);
         
-	// send the nonce
+	/* send the nonce */
 	if (send(sock, strnonce, strlen(strnonce), 0) == -1) {
 		D("Error: sending strnonce");
                 retval = SIBYL_NONCE_ERROR;
                 goto FREE;
 	}
 
-        // remove trailing @ for comparing
+        /* remove trailing @ for comparing */
         strnonce[16] = 0;
 
 FREE:
@@ -358,7 +360,7 @@ receive_msg(char *msg, int sock, char *command, char *token[3])
 		if ((count_bytes += bytes_rcvd) > SIBYL_MAX_MSG) {
 			perror("Sibyl's client is sending more bytes than"
 			       "necessary");
-                        // we exit here because the client is cheating
+                        /* we exit here because the client is cheating */
                         retval = SIBYL_NASTY_CLIENT;
                         goto FREE;
 		}
@@ -455,7 +457,7 @@ receive_msg(char *msg, int sock, char *command, char *token[3])
 
 FREE:
         /* Cannot free new_ptr: THESE ARE THE TOKENS! */
-        // free(new_ptr);
+        /*  free(new_ptr); */
 	return (retval);
 }
 

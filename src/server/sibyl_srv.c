@@ -20,7 +20,7 @@
 #include "sibyl.h"
 #include "sibyl_srv_support.h"
 
-// get sockaddr, IPv4 or IPv6:
+/* get sockaddr, IPv4 or IPv6: */
 void *
 get_in_addr(struct sockaddr *sa)
 {
@@ -129,8 +129,8 @@ main (int argc, char *argv[])
 				s, sizeof(s));
 		D1("server: got connection from %s\n", s);
 
-		if (!fork()) { // child process
-			close(sock); // child doesn't need the listener
+		if (!fork()) { /* child process */
+			close(sock); /* child doesn't need the listener */
 			char *strnonce = NULL;
 			char *msg      = NULL;
                         char command   = 0;
@@ -277,7 +277,7 @@ main (int argc, char *argv[])
                         retval = SIBYL_SUCCESS;
                         goto FREE;
 		}
-		close(newsock); // parent doesn't need this
+		close(newsock); /* parent doesn't need this */
 	}
 
 FREE:
