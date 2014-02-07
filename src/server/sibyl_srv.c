@@ -117,7 +117,7 @@ main (int argc, char *argv[])
 
 	while (1) {
 		/* Accept connection */
-		sin_size = sizeof client_addr;
+		sin_size = sizeof(client_addr);
 		newsock = accept(sock, (struct sockaddr *)&client_addr,
 				&sin_size);
 		if (newsock == -1) {
