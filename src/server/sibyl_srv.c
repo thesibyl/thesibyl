@@ -33,39 +33,23 @@ get_in_addr(struct sockaddr *sa)
 int
 main (int argc, char *argv[])
 {
-	int sock, newsock;
 	struct sockaddr_storage client_addr;
-	socklen_t sin_size;
 	char s[INET6_ADDRSTRLEN];
-	RSA *decrypt, *sign;
-        decrypt = NULL;
-        sign    = NULL;
-
+	char dir[_POSIX_PATH_MAX] = SIBYL_DIR;
+	char ip[17 + 1];
+	char port[10] = SIBYL_PORT;
+	char decr_namefile[_POSIX_PATH_MAX] = SIBYL_DECR_KEY;
+	char sign_namefile[_POSIX_PATH_MAX] = SIBYL_SIGN_KEY;
+	int sock, newsock;
 	int retval = SIBYL_SUCCESS;
+	socklen_t sin_size;
+	RSA *decrypt = NULL;
+	RSA *sign = NULL;
 
-        char *dir  = NULL;
-        char *ip   = NULL;
-        char *port = NULL;
-        char *decr_namefile = NULL;
-        char *sign_namefile = NULL;
 
-        dir  = (char *)calloc(_POSIX_PATH_MAX + 1, sizeof(char));
-        ip   = (char *)calloc(17 + 1, sizeof(char));
-        port = (char *)calloc(10, sizeof(char));
-        decr_namefile = (char *)calloc(_POSIX_PATH_MAX + 1, sizeof(char));
-        sign_namefile = (char *)calloc(_POSIX_PATH_MAX + 1, sizeof(char));
-
-        if (dir == NULL || ip == NULL || port == NULL ||
-           decr_namefile == NULL || sign_namefile == NULL) {
-                D("Malloc");
-                retval = SIBYL_OSERR;
-                goto FREE;
-        }
-
-        strncpy(dir, SIBYL_DIR, _POSIX_PATH_MAX);
-        strncpy(port, SIBYL_PORT, 9);
-        strncpy(decr_namefile, SIBYL_DECR_KEY, _POSIX_PATH_MAX);
-        strncpy(sign_namefile, SIBYL_SIGN_KEY, _POSIX_PATH_MAX);
+	/* Let's zero uninitialized buffers */
+	memset(s, 0, sizeof(s));
+	memset(s, 0, sizeof(ip));
 
 	/* Read options */
 	int c;
@@ -117,7 +101,7 @@ main (int argc, char *argv[])
 
 	while (1) {
 		/* Accept connection */
-		sin_size = sizeof(client_addr);
+		sin_size = sizeof client_addr;
 		newsock = accept(sock, (struct sockaddr *)&client_addr,
 				&sin_size);
 		if (newsock == -1) {
@@ -284,10 +268,6 @@ FREE:
 
         RSA_free(decrypt);
         RSA_free(sign);
-        free(dir);
-        free(ip);
-        free(port);
-        free(decr_namefile);
-        free(sign_namefile);
+
 	exit(retval);
 }

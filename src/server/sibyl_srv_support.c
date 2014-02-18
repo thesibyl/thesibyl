@@ -42,12 +42,11 @@ int
 pass_cb(char *buf, int size, int rwflag, void *u)
 {
         
-        int retval = SIBYL_SUCCESS;
-
-	int len;
 	char pass[PASSPHRASE_MAX_LENGTH + 1];
-        char fmt[20];
 	struct termios oflags, nflags;
+        int retval = SIBYL_SUCCESS;
+	int len;
+        char fmt[20];
 
 	/* Disabling echo */
 	tcgetattr(fileno(stdin), &oflags);
@@ -57,8 +56,7 @@ pass_cb(char *buf, int size, int rwflag, void *u)
 
 	if (tcsetattr(fileno(stdin), TCSANOW, &nflags) != 0) {
 		D("Error: Disabling echo (tcsetattr)");
-                retval = errno;
-                goto END;
+		return (errno);
 	}
 
 	printf("Enter PEM pass phrase for '%s': ", (char*)u);
@@ -68,8 +66,7 @@ pass_cb(char *buf, int size, int rwflag, void *u)
 	/* Restore terminal */
 	if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0) {
 		D("Error: Restoring echo (tcsetattr)");
-                retval = errno;
-                goto END;
+		return (errno);
 	}
 
 	len = strlen(pass);
@@ -81,7 +78,6 @@ pass_cb(char *buf, int size, int rwflag, void *u)
 	memset(buf, '\0', size);
 	memcpy(buf, pass, len);
 
-END:
 	return (retval);
 }
 
@@ -103,50 +99,37 @@ int
 read_keys(RSA **decrypt, char *decr_filename, RSA **sign, char *sign_filename,
 		char *dir)
 {
-
-        int retval = SIBYL_SUCCESS;
-
 	/* RSA private keys fnames & files */
-	char *decr_fname = NULL;
-        char *sign_fname = NULL;
+	char decr_fname[_POSIX_PATH_MAX];
+        char sign_fname[_POSIX_PATH_MAX];
 	FILE *decr_f = NULL;
         FILE *sign_f = NULL;
 
-	decr_fname = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
-	sign_fname = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
-	if (decr_fname == NULL || sign_fname == NULL) {
-		D("Error: decr_fname or sign_fname alloc");
-                retval = SIBYL_KEYS_ERROR;
-                goto FREE;
-	}
-
-	if (strlen(SIBYL_DIR) >= _POSIX_PATH_MAX ||
-	   FILE_LEN >= _POSIX_PATH_MAX ||
-	   (strlen(SIBYL_DIR) + 1 + FILE_LEN) >= _POSIX_PATH_MAX) {
+	if ((strlen(SIBYL_DIR) + 1 + FILE_LEN) >= _POSIX_PATH_MAX) {
 		D("Error: dir length");
-                retval = SIBYL_KEYS_ERROR;
-                goto FREE;
+                return (SIBYL_KEYS_ERROR);
 	}
 
         snprintf(decr_fname, _POSIX_PATH_MAX, "%s/%s", dir, decr_filename);
         snprintf(sign_fname, _POSIX_PATH_MAX, "%s/%s", dir, sign_filename);
 
-	/* Fetch the private keys */
-        decr_f = fopen(decr_fname, "r");
-        sign_f = fopen(sign_fname, "r");
-        if (decr_f == NULL || sign_f == NULL) {
-		D("Error: Unable to open some key file\n");
-                retval = SIBYL_KEYS_ERROR;
-                goto FREE;
-	}
 
 	/* RSA *decrypt *sign */
         *decrypt = RSA_new();
-        *sign    = RSA_new();
+        *sign = RSA_new();
+
 	if (*decrypt == NULL || *sign == NULL) {
 		D("Error: Unable to RSA_new() decrypt");
-		retval = SIBYL_KEYS_ERROR;
-                goto FREE;
+		return (SIBYL_KEYS_ERROR);
+	}
+
+	/* Fetch the private keys */
+        decr_f = fopen(decr_fname, "r");
+        sign_f = fopen(sign_fname, "r");
+
+        if (decr_f == NULL || sign_f == NULL) {
+		D("Error: Unable to open some key file\n");
+                return (SIBYL_KEYS_ERROR);
 	}
 
 	/* Read the private keys */
@@ -154,22 +137,16 @@ read_keys(RSA **decrypt, char *decr_filename, RSA **sign, char *sign_filename,
 	PEM_read_RSAPrivateKey(decr_f, decrypt, pass_cb, NULL);
 	PEM_read_RSAPrivateKey(sign_f, sign, pass_cb, NULL);
 
+	/* Close file descriptors */
+	fclose(decr_f);
+	fclose(sign_f);
+
 	if ((*decrypt)->n == NULL || (*sign)->n == NULL) {
 		D("Error reading the RSA decrypt key");
-                retval = SIBYL_KEYS_ERROR;
-                goto FREE;
+                return (SIBYL_KEYS_ERROR);
 	}
 
-FREE:
-	if (decr_f)
-		fclose(decr_f);
-	if (sign_f)
-		fclose(sign_f);
-
-        free(decr_fname);
-        free(sign_fname);
-
-	return (retval);
+	return (SIBYL_SUCCESS);
 }
 
 
@@ -190,12 +167,11 @@ FREE:
 int
 start_server(int *sock, char *ip, char *port)
 {
-        int retval = SIBYL_SUCCESS;
 
+	struct sigaction sa;
 	struct addrinfo hints, *srvinfo, *p;
 	int status; 
 	int yes = 1;
-	struct sigaction sa;
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_UNSPEC;
@@ -204,8 +180,8 @@ start_server(int *sock, char *ip, char *port)
 
 	if ((status = getaddrinfo(NULL, port, &hints, &srvinfo)) != 0) {
 		D1("Error: getaddrinfo  %s\n", gai_strerror(status));
-                retval = SIBYL_LISTEN_ERROR;
-                goto FREE;
+		freeaddrinfo(srvinfo);
+                return (SIBYL_LISTEN_ERROR);
 	}
 
 	/* loop through all the results and bind to the first we can */
@@ -233,15 +209,15 @@ start_server(int *sock, char *ip, char *port)
 
 	if (p == NULL) {
 		D("Error: server failed to bind");
-                retval = SIBYL_LISTEN_ERROR;
-                goto FREE;
+		freeaddrinfo(srvinfo);
+                return (SIBYL_LISTEN_ERROR);
 	}
 
 	/* Start listening */
 	if (listen(*sock, SIBYL_BACKLOG) == -1) {
 		D("Error: listening");
-                retval = SIBYL_LISTEN_ERROR;
-                goto FREE;
+		freeaddrinfo(srvinfo);
+                return (SIBYL_LISTEN_ERROR);
 	}
 
 	sa.sa_handler = sigchld_handler; /* reap all dead processes */
@@ -249,14 +225,12 @@ start_server(int *sock, char *ip, char *port)
 	sa.sa_flags = SA_RESTART;
 	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
 		D("Error: sigaction");
-                retval = SIBYL_LISTEN_ERROR;
-                goto FREE;
+		freeaddrinfo(srvinfo);
+                return (SIBYL_LISTEN_ERROR);
 	}
 
-FREE:
 	freeaddrinfo(srvinfo);
-
-	return (retval);
+	return (SIBYL_SUCCESS);
 }
 
 
@@ -278,9 +252,6 @@ FREE:
 int
 send_nonce(int sock, char *strnonce)
 {
-
-        int retval = SIBYL_SUCCESS;
-
 	u_char nonce[9];
 	int count;
 
@@ -300,15 +271,13 @@ send_nonce(int sock, char *strnonce)
 	/* send the nonce */
 	if (send(sock, strnonce, strlen(strnonce), 0) == -1) {
 		D("Error: sending strnonce");
-                retval = SIBYL_NONCE_ERROR;
-                goto FREE;
+                return (SIBYL_NONCE_ERROR);
 	}
 
         /* remove trailing @ for comparing */
         strnonce[16] = 0;
 
-FREE:
-        return (retval);
+        return (SIBYL_SUCCESS);
 }
 
 /* receive_msg
@@ -353,16 +322,14 @@ receive_msg(char *msg, int sock, char *command, char *token[3])
 		if ((bytes_rcvd = recv(sock, &(msg[count_bytes]),
 				      SIBYL_MAX_MSG - count_bytes, 0)) <= 0) {
 			perror("Connection error with the client.");
-                        retval = SIBYL_OSERR;
-                        goto FREE;
+                        return (SIBYL_OSERR);
 		}
 
 		if ((count_bytes += bytes_rcvd) > SIBYL_MAX_MSG) {
 			perror("Sibyl's client is sending more bytes than"
 			       "necessary");
                         /* we exit here because the client is cheating */
-                        retval = SIBYL_NASTY_CLIENT;
-                        goto FREE;
+                        return (SIBYL_NASTY_CLIENT);
 		}
 	}
 
@@ -371,7 +338,7 @@ receive_msg(char *msg, int sock, char *command, char *token[3])
 
         if (new_msg == NULL) {
 		D("Error: Unable to allocate memory for new_msg");
-                goto FREE;
+		return (SIBYL_RECV_ERROR);
         }
         new_ptr = new_msg;
 
@@ -397,8 +364,7 @@ receive_msg(char *msg, int sock, char *command, char *token[3])
         full_cmd = strsep(&new_msg, ";");
         if (full_cmd == NULL) {
                 D("Error: Malformed message received from the client");
-		retval = SIBYL_MALFORMED_MSG;
-                goto FREE;
+		return (SIBYL_MALFORMED_MSG);
 	}
 
         /* return immediately if just asking for public keys */
@@ -411,53 +377,47 @@ receive_msg(char *msg, int sock, char *command, char *token[3])
         if (*command != 0 && *command != '-' && !('0' <= *command &&
              *command <= '9')) {
                 D1("Wrong command:{%c}", *command);
-                retval = SIBYL_MALFORMED_MSG;
-                goto FREE;
+                return (SIBYL_MALFORMED_MSG);
         }
 
         if (*command == '-')
-                goto FREE;
+                return (SIBYL_SUCCESS);
 
 	/* token[0] = m */
 	token[0] = strsep(&new_msg, ";");
 	if (token[0] == NULL) {
 		D("Error: Malformed message received from the client 0");
-                retval = SIBYL_MALFORMED_MSG;
-                goto FREE;
+                return (SIBYL_MALFORMED_MSG);
 	}
 
 	/* token[1] = p1 */
 	token[1] = strsep(&new_msg, ";");
 	if (token[1] == NULL) {
 		D("Error: Malformed message received from the client 1");
-                retval = SIBYL_MALFORMED_MSG;
-                goto FREE;
+                return (SIBYL_MALFORMED_MSG);
 	}
 
         /* return immediately if asking for a transformation */
         if (*command != 0) {
-                retval = SIBYL_SUCCESS;
-                goto FREE;
+                return (SIBYL_SUCCESS);
         }
 
 	/* token[2] = p2, only if command is 'verify' */
 	token[2] = strsep(&new_msg, ";");
 	if (token[2] == NULL) {
 		D("Error: Malformed message received from the client");
-                retval = SIBYL_MALFORMED_MSG;
-                goto FREE;
+                return (SIBYL_MALFORMED_MSG);
 	}
 
 	/* there should not be more tokens */
 	if (strsep(&new_msg, ";") != NULL) {
 		D("Error: Malformed message received from the client");
-                retval = SIBYL_MALFORMED_MSG;
-                goto FREE;
+                return (SIBYL_MALFORMED_MSG);
 	}
 
-FREE:
         /* Cannot free new_ptr: THESE ARE THE TOKENS! */
         /*  free(new_ptr); */
+
 	return (retval);
 }
 
@@ -481,16 +441,14 @@ FREE:
 int
 decrypt_token(char *p_data, char key, char *tkn, RSA *decrypt)
 {
-        int retval = SIBYL_SUCCESS;
-
 	int rsa_d;
         char *p_rsa = NULL;
 
 	p_rsa = (char *)calloc(RSA_size(decrypt) + 1, 1);
 	if (p_rsa == NULL) {
 		D("Error: Unable to allocate memory for tkn_rsa");
-                retval = errno;
-                goto FREE;
+		free(p_rsa);
+                return (errno);
 	}
 
         printf("Decrypt: {%s}\n", tkn);
@@ -503,14 +461,13 @@ decrypt_token(char *p_data, char key, char *tkn, RSA *decrypt)
 				    RSA_PKCS1_OAEP_PADDING);
 	if (rsa_d == -1) {
                 D("Error decrypting data");
-                retval = SIBYL_OPENSSL_ERROR;
-                goto FREE;
+		free(p_rsa);
+                return (SIBYL_OPENSSL_ERROR);
 	}
 
 
-FREE:
-        free(p_rsa);
-	return (retval);
+	free(p_rsa);
+	return (SIBYL_SUCCESS);
 }
 
 
@@ -537,9 +494,6 @@ FREE:
 int
 is_pwd_ok(char *p1_data, char *p2_data, char *auth_result, char *strnonce)
 {
-
-        int retval = SIBYL_SUCCESS;
-
 	/* Calculates v1, that is: p2_data = n:v1 */
 	char *p2_token[2];
 
@@ -549,8 +503,7 @@ is_pwd_ok(char *p1_data, char *p2_data, char *auth_result, char *strnonce)
 
 	if (p2_token[0] == NULL || p2_token[1] == NULL) {
 		D("Error: Malformed p2_data");
-                retval = SIBYL_MALFORMED_MSG;
-                goto FREE;
+                return (SIBYL_MALFORMED_MSG);
 	}
 
 	D1("nonce: %s\n", p2_token[0]);
@@ -566,8 +519,7 @@ is_pwd_ok(char *p1_data, char *p2_data, char *auth_result, char *strnonce)
 		D("auth NOok");
 	}
 
-FREE:
-	return (retval);
+	return (SIBYL_SUCCESS);
 }
 
 /* send_response
@@ -587,7 +539,7 @@ FREE:
 int
 send_response(int *sock, char *token[3], char *auth_result, RSA *sign)
 {
-        int retval = SIBYL_SUCCESS;
+	int retval;
 
 	/* Create the response, which is as follows:
  	 * M;signature
@@ -606,8 +558,8 @@ send_response(int *sock, char *token[3], char *auth_result, RSA *sign)
 				  strlen(auth_result) + 1, sizeof(char));
 	if (message == NULL) {
 		D("Error: Unable to allocate memory for message");
-                retval = errno;
-                goto FREE;
+		free(message);
+                return (errno);
 	}
 	strncat(message, token[0], SIBYL_NONCE_LENGTH-1);
 	strncat(message, ":", 1);
@@ -617,7 +569,6 @@ send_response(int *sock, char *token[3], char *auth_result, RSA *sign)
 
         retval = sign_msg_and_send(message, sign, *sock);
 
-FREE:
         free(message);
 	return (retval);
 }
@@ -630,18 +581,11 @@ translate_and_send(char *p1_data, char version, char *decr_namefile, char *dir,
 
         int retval = SIBYL_SUCCESS;
         
-        char *public_fname = NULL;
+        char public_fname[_POSIX_PATH_MAX + 1];
+        char encrypted_p1[SIBYL_CRYPTD_PWD_MAX];
+        char b64_enc_p1[SIBYL_CRYPTD_PWD_MAX];
         FILE *public = NULL;
         RSA *pub_key = NULL;
-        char *encrypted_p1 = NULL;
-        char *b64_enc_p1   = NULL;
-
-        public_fname = (char *)calloc(_POSIX_PATH_MAX+1, sizeof(char));
-        if (public_fname == NULL) {
-                D("Unable to allocate memory for public_fname");
-                retval = errno;
-                goto FREE;
-        }
 
         snprintf(public_fname, _POSIX_PATH_MAX, "%s%s%c.pub", dir,
 			decr_namefile, version);
@@ -649,30 +593,22 @@ translate_and_send(char *p1_data, char version, char *decr_namefile, char *dir,
         public = fopen("../keys/decrypt1.pub", "r");
         if (public == NULL) {
                 D1("Unable to open [%s]", public_fname);
-                retval = errno;
-                goto FREE;
+                return (errno);
         }
         
         pub_key = RSA_new();
         if (pub_key == NULL) {
                 D("Unable to initialise pub_key");
-                retval = SIBYL_KEYS_ERROR;
-                goto FREE;
+		fclose(public);
+                return (SIBYL_KEYS_ERROR);
         }
 
         PEM_read_RSA_PUBKEY(public, &pub_key, NULL, NULL);
         if (pub_key == NULL) {
                 D("Unable to initialise pub_key");
-                retval = SIBYL_KEYS_ERROR;
-                goto FREE;
-        }
-
-        encrypted_p1 = (char *)calloc(SIBYL_CRYPTD_PWD_MAX, sizeof(char));
-        b64_enc_p1    = (char *)calloc(SIBYL_CRYPTD_PWD_MAX, sizeof(char));
-        if (encrypted_p1 == NULL || b64_enc_p1   == NULL) {
-                D("Unable to allocate memory");
-                retval = errno;
-                goto FREE;
+		RSA_free(pub_key);
+		fclose(public);
+                return (SIBYL_KEYS_ERROR);
         }
 
         /* DANGER: strlen(p1_data!!!) */
@@ -680,8 +616,7 @@ translate_and_send(char *p1_data, char version, char *decr_namefile, char *dir,
                                     (unsigned char *)encrypted_p1, pub_key,
                                     RSA_PKCS1_OAEP_PADDING);
         if (retval < 0) {
-                D("Unable to decrypt");
-                goto FREE;
+		return (retval);
         }
         
 	b64_ntop((u_char *)encrypted_p1, RSA_size(pub_key), b64_enc_p1,
@@ -689,12 +624,6 @@ translate_and_send(char *p1_data, char version, char *decr_namefile, char *dir,
 
         retval = sign_msg_and_send(b64_enc_p1, sign, sock);
 
-FREE:
-        free(encrypted_p1);
-        free(b64_enc_p1);
-        free(public_fname);
-        RSA_free(pub_key);
-        fclose(public);
 
 	return (retval);        
 }
@@ -703,23 +632,14 @@ FREE:
 int
 send_public_keys(char *dir, char *decr_fn, char *sign_fn, int sock)
 {
-
-        int retval = SIBYL_SUCCESS;
-        char *decr_path = NULL;
-        char *sign_path = NULL;
+        char decr_path[_POSIX_PATH_MAX];
+        char sign_path[_POSIX_PATH_MAX];
         FILE *d = NULL;
         FILE *s = NULL;
 
         int i,j;
         char buf[512];
 
-        decr_path = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
-        sign_path = (char *)calloc(_POSIX_PATH_MAX, sizeof(char));
-	if (decr_path == NULL || sign_path == NULL) {
-		D("Error: decr_fname or sign_fname alloc");
-		return (SIBYL_KEYS_ERROR);
-	}
-        
         /* Only PUB keys! */
         snprintf(decr_path, _POSIX_PATH_MAX, "%s/%s.pub", dir, decr_fn);
         snprintf(sign_path, _POSIX_PATH_MAX, "%s/%s.pub", dir, sign_fn);
@@ -735,38 +655,31 @@ send_public_keys(char *dir, char *decr_fn, char *sign_fn, int sock)
 
         FILE *f[2] = {d, s};
         char *n[2] = {decr_fn, sign_fn};
-        for (j=0; j<2; j++) {
+        for (j = 0; j < 2; j++) {
                 send(sock, n[j], strlen(n[j]), 0);
                 send(sock, "\n\n", 2, 0);
                 while (!feof(f[j])) {
                         i = fread(buf, 1, 512, f[j]);
                         if (i<0) {
                                 D("Error reading public files.");
-                                retval = errno;
-                                goto FREE;
+                                return (errno);
                         }
                         if (send(sock, buf, i, 0) == -1) {
                                 D("Error sending public files.");
-                                retval = errno;
-                                goto FREE;
+                                return (errno);
                         }
                 }
                 fclose(f[j]);
         }
 
-FREE:
-        free(decr_path);
-        free(sign_path);
         
-        return (retval);
+        return (SIBYL_SUCCESS);
 }
 
 
 int
 sign_msg_and_send(char *msg, RSA *sign, int sock)
 {
-        int retval = SIBYL_SUCCESS;
-
         char *sha1_m = NULL;
         char *signature = NULL;
         char *signature_b64 = NULL;
@@ -774,13 +687,10 @@ sign_msg_and_send(char *msg, RSA *sign, int sock)
 
 	/* computes the SHA-1 message digest (20 bytes) */
 	sha1_m = (char *)calloc(20, sizeof(char));
-	signature = (char *)calloc(RSA_size(sign) + 1, 1);
-	signature_b64 = (char *)calloc(RSA_size(sign) * 4 + 1,1);
 
-	if (sha1_m == NULL || signature == NULL || signature_b64 == NULL) {
+	if (sha1_m == NULL) {
 		D("Error: Unable to allocate memory");
-                retval = errno;
-                goto FREE;
+                return (errno);
 	}
 
         D1("msg: {%s}\n", msg);
@@ -789,14 +699,31 @@ sign_msg_and_send(char *msg, RSA *sign, int sock)
 
 	u_int siglen;
 	siglen = RSA_size(sign);
+	signature = (char *)calloc(RSA_size(sign) + 1, 1);
+
+	if (signature == NULL) {
+		D("Error: Unable to allocate memory");
+		free(sha1_m);
+                return (errno);
+	}
+
 	if (RSA_sign(NID_sha1, (u_char *)sha1_m, 20, (u_char *)signature,
 		     &siglen, sign) != 1) {
                 D("Error signing");
-                retval = errno;
-                goto FREE;
+		free(sha1_m);	
+                return (errno);
 	}
 	
 	/* encode the signature to base-64 */
+	signature_b64 = (char *)calloc(RSA_size(sign) * 4 + 1,1);
+
+	if (signature_b64 == NULL) {
+		D("Error: Unable to allocate memory");
+		free(sha1_m);
+		free(signature);
+                return (errno);
+	}
+
 	b64_ntop((u_char *)signature, siglen, signature_b64, RSA_size(sign) * 4);
 	D1("signature_b64: %s\n", signature_b64);
 
@@ -805,8 +732,10 @@ sign_msg_and_send(char *msg, RSA *sign, int sock)
 			strlen(signature_b64)+5, sizeof(char));
 	if (response == NULL) {
 		D("Error: Unable to allocate memory for response");
-                retval = errno;
-                goto FREE;
+		free(sha1_m);
+		free(signature);
+		free(signature_b64);
+                return (errno);
 	}
 
         /* all strings are safe here */
@@ -820,14 +749,17 @@ sign_msg_and_send(char *msg, RSA *sign, int sock)
 	/* Send response */
 	if (send(sock, response, strlen(response), 0) == -1) {
 		D("Error: sending response");
-                retval = errno;
-                goto FREE;
+		free(sha1_m);
+		free(signature);
+		free(signature_b64);
+		free(response);	
+                return (errno);
 	}
 
-FREE:
         free(response);
         free(signature_b64);
         free(signature);
         free(sha1_m);
-        return (retval);
+
+        return (SIBYL_SUCCESS);
 }
