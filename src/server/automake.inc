@@ -5,4 +5,4 @@ sibyl_srv_SOURCES = server/sibyl_srv.c \
 		  lib/sibyl.h \
 		  lib/bsd-base64.c \
 		  lib/bsd-base64.h
-AM_CFLAGS = -I$(top_srcdir)/lib
+AM_CFLAGS = -Wall -I$(top_srcdir)/lib
