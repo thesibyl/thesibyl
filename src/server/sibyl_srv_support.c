@@ -96,8 +96,8 @@ pass_cb(char *buf, int size, int rwflag, void *u)
  *
  */
 int
-read_keys(RSA **decrypt, char *decr_filename, RSA **sign, char *sign_filename,
-		char *dir)
+read_keys(RSA **decrypt, const char *decr_filename, RSA **sign,
+		const char *sign_filename, const char *dir)
 {
 	/* RSA private keys fnames & files */
 	char decr_fname[_POSIX_PATH_MAX];
@@ -165,7 +165,7 @@ read_keys(RSA **decrypt, char *decr_filename, RSA **sign, char *sign_filename,
  *
  */
 int
-start_server(int *sock, char *ip, char *port)
+start_server(int *sock, /* UNUSED */ const char *ip, const char *port)
 {
 
 	struct sigaction sa;
@@ -439,7 +439,7 @@ receive_msg(char *msg, int sock, char *command, char *token[3])
  *
  */
 int
-decrypt_token(char *p_data, char key, char *tkn, RSA *decrypt)
+decrypt_token(char *p_data, /* UNUSED */ char key, char *tkn, RSA *decrypt)
 {
 	int rsa_d;
         char *p_rsa = NULL;
@@ -492,7 +492,8 @@ decrypt_token(char *p_data, char key, char *tkn, RSA *decrypt)
  *
  */
 int
-is_pwd_ok(char *p1_data, char *p2_data, char *auth_result, char *strnonce)
+is_pwd_ok(const char *p1_data, char *p2_data, char *auth_result,
+		const char *strnonce)
 {
 	/* Calculates v1, that is: p2_data = n:v1 */
 	char *p2_token[2];
@@ -537,7 +538,8 @@ is_pwd_ok(char *p1_data, char *p2_data, char *auth_result, char *strnonce)
  *
  */
 int
-send_response(int *sock, char *token[3], char *auth_result, RSA *sign)
+send_response(int *sock, const char *token[3], const char *auth_result,
+		RSA *sign)
 {
 	int retval;
 

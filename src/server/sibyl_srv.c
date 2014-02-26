@@ -243,7 +243,7 @@ main (int argc, char *argv[])
 
 			/* Send the response to the client */
 
-			retval = send_response(&newsock, token, auth_result,
+			retval = send_response(&newsock, (const char **) token, auth_result,
 					sign);
 			if (retval != SIBYL_SUCCESS) {
                                 goto ENDCHILD;

@@ -13,11 +13,11 @@
 #define PASSPHRASE_MAX_LENGTH 1024
 
 int
-read_keys(RSA **decrypt, char *decr_filename, RSA **sign, char *sign_filename,
-		char *dir);
+read_keys(RSA **decrypt, const char *decr_filename, RSA **sign,
+		const char *sign_filename, const char *dir);
 
 int
-start_server(int *sock, char *ip, char *port);
+start_server(int *sock, /* UNUSED */ const char *ip, const char *port);
 
 int
 send_nonce(int sock, char *strnonce);
@@ -26,13 +26,15 @@ int
 receive_msg(char *msg, int sock, char *command, char *token[3]);
 
 int
-decrypt_token(char *p_data, char key, char *token, RSA *decrypt);
+decrypt_token(char *p_data, /* UNUSED */ char key, char *token, RSA *decrypt);
 
 int
-is_pwd_ok(char *p1_data, char *p2_data, char *auth_result, char *strnonce);
+is_pwd_ok(const char *p1_data, char *p2_data, char *auth_result,
+		const char *strnonce);
 
 int
-send_response(int *sock, char *token[3], char *auth_result, RSA *sign);
+send_response(int *sock, const char *token[3], const char *auth_result,
+		RSA *sign);
 
 int
 translate_and_send(char *p1_data, char version, char *decr_namefile,
