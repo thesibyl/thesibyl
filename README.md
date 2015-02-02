@@ -12,7 +12,7 @@ passwords as simple as possible).
 
 We present a different approach for storing shadow files: using a
 separate server for checking the correctness of the password
-introduced by the user, taking advantage of symmetric key encryption.
+introduced by the user, taking advantage of asymmetric key encryption.
 
 In summary: instead of keeping the hash (as `crypt(3)` does, or `SHA1`) of
 the password in the shadow file, store an OAEP RSA-cyphertext of the
