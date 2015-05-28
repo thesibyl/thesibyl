@@ -1,6 +1,5 @@
-#ifndef __SIBYL_SRV
-#define __SIBYL_SRV
-#endif
+#ifndef __SIBYL_SRV_H__
+#define __SIBYL_SRV_H__
 
 /* most of this file is a copy-paste from pam_sibyl.h
  * this should change, obviously, in the future
@@ -108,3 +107,4 @@
 #define D1(x,y) /**/
 #endif
 
+#endif /* __SIBYL_SRV_H__ */
